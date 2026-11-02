@@ -1,3 +1,5 @@
+"use client"
+
 import { DateTimeRangePicker } from "@/registry/default/ui/date-time-range"
 import { Label } from "@/registry/default/ui/label"
 

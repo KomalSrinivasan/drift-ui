@@ -182,6 +182,10 @@ describe("DateTimeRangePicker", () => {
         presets={[
           { label: "Last 7 days", value: lastWeek },
           { label: "Last 12 months", value: lastYear },
+          {
+            label: "Backwards",
+            value: { from: lastWeek.to, to: lastWeek.from },
+          },
         ]}
         onValueChange={onValueChange}
       />
@@ -192,6 +196,7 @@ describe("DateTimeRangePicker", () => {
     expect(
       presets.getByRole("button", { name: "Last 12 months" })
     ).toBeDisabled()
+    expect(presets.getByRole("button", { name: "Backwards" })).toBeDisabled()
 
     await user.click(presets.getByRole("button", { name: "Last 7 days" }))
     expect(onValueChange).toHaveBeenLastCalledWith(lastWeek)

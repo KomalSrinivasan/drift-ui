@@ -4,7 +4,7 @@ import {
   clampDate,
   formatRange,
   hourCycleOf,
-  isRangeWithin,
+  isRangeAllowed,
   isSameRange,
   monthToShow,
   pickDays,
@@ -65,9 +65,11 @@ describe("clampDate", () => {
 })
 
 describe("monthToShow", () => {
-  it("shows the start of the range", () => {
+  it("shows the start of the range, or its end when only the end is set", () => {
     const from = new Date(2026, 5, 1)
-    expect(monthToShow({ from }, BOUNDS)).toBe(from)
+    const to = new Date(2026, 7, 1)
+    expect(monthToShow({ from, to }, BOUNDS)).toBe(from)
+    expect(monthToShow({ to }, BOUNDS)).toBe(to)
   })
 
   it("shows today, pulled inside the bounds, when there is no start", () => {
@@ -87,16 +89,25 @@ describe("monthToShow", () => {
   })
 })
 
-describe("isRangeWithin", () => {
+describe("isRangeAllowed", () => {
   it("checks every set edge against the bounds", () => {
-    expect(isRangeWithin({ from: MIN, to: MAX }, BOUNDS)).toBe(true)
-    expect(isRangeWithin({ from: new Date(2026, 2, 5, 7, 59) }, BOUNDS)).toBe(
+    expect(isRangeAllowed({ from: MIN, to: MAX }, BOUNDS)).toBe(true)
+    expect(isRangeAllowed({ from: new Date(2026, 2, 5, 7, 59) }, BOUNDS)).toBe(
       false
     )
-    expect(isRangeWithin({ to: new Date(2026, 2, 20, 18, 1) }, BOUNDS)).toBe(
+    expect(isRangeAllowed({ to: new Date(2026, 2, 20, 18, 1) }, BOUNDS)).toBe(
       false
     )
-    expect(isRangeWithin({}, BOUNDS)).toBe(true)
+    expect(isRangeAllowed({}, BOUNDS)).toBe(true)
+  })
+
+  it("rejects a range whose end is before its start", () => {
+    expect(
+      isRangeAllowed(
+        { from: new Date(2026, 2, 10), to: new Date(2026, 2, 9) },
+        {}
+      )
+    ).toBe(false)
   })
 })
 
@@ -216,7 +227,7 @@ describe("timeZoneLabel", () => {
 })
 
 describe("formatRange", () => {
-  it("formats a full range, a start only, and nothing", () => {
+  it("formats a full range, a start only, an end only, and nothing", () => {
     const from = new Date(2026, 2, 10, 9, 0)
     const to = new Date(2026, 2, 12, 17, 0)
     expect(formatRange({ from, to }, "en-US")?.replace(/\s/g, " ")).toBe(
@@ -224,6 +235,9 @@ describe("formatRange", () => {
     )
     expect(formatRange({ from }, "en-US")?.replace(/\s/g, " ")).toBe(
       "Mar 10, 2026, 9:00 AM"
+    )
+    expect(formatRange({ to }, "en-US")?.replace(/\s/g, " ")).toBe(
+      "Mar 12, 2026, 5:00 PM"
     )
     expect(formatRange({}, "en-US")).toBeNull()
   })

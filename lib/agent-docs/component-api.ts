@@ -285,14 +285,14 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
         STATE_PROPS.defaultValue("{ from?: Date; to?: Date }", "{}"),
         STATE_PROPS.onValueChange(
           "(range: { from?: Date; to?: Date }) => void",
-          "when a day, time or preset changes"
+          "when a day, time or preset changes, or the range is cleared"
         ),
         {
           name: "presets",
           type: "{ label: string; value: { from?: Date; to?: Date } }[]",
           default: "[]",
           description:
-            "Ranges listed beside the calendar. Picking one sets the range and shows its month. A preset outside min or max is disabled, and the one matching the current range is pressed.",
+            "Ranges listed beside the calendar. Picking one sets the range and shows its month. A preset outside min or max, or with its end before its start, is disabled. The one matching the current range is pressed.",
         },
         {
           name: "min",

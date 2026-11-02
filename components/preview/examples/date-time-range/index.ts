@@ -25,7 +25,7 @@ export const examples: ComponentExample[] = [
     id: "bounds",
     title: "Min and max",
     description:
-      "Bookings open two hours from now and close at 18:00 two weeks out. Days outside are disabled, and on the first and last day a time past the limit snaps back to it.",
+      "Bookings open on the first full hour more than two hours from now and close at 18:00 two weeks out. Days outside are disabled, and on the first and last day a time past the limit snaps back to it.",
     Preview: DateTimeRangeBoundsPreview,
   },
   {

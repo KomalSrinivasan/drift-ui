@@ -7,7 +7,7 @@ import type { DateRange, Matcher } from "react-day-picker"
 import {
   formatRange,
   hourCycleOf,
-  isRangeWithin,
+  isRangeAllowed,
   isSameRange,
   monthToShow,
   pickDays,
@@ -145,7 +145,7 @@ function DateTimeRangePicker({
                 size="sm"
                 className="justify-start aria-pressed:bg-accent aria-pressed:text-accent-foreground"
                 aria-pressed={isSameRange(range, preset.value)}
-                disabled={!isRangeWithin(preset.value, bounds)}
+                disabled={!isRangeAllowed(preset.value, bounds)}
                 onClick={() => applyPreset(preset)}
               >
                 {preset.label}

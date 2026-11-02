@@ -41,15 +41,19 @@ export function clampDate(date: Date, { min, max }: DateTimeBounds) {
 }
 
 export function monthToShow(range: DateTimeRange, bounds: DateTimeBounds) {
-  return range.from ?? clampDate(new Date(), bounds)
+  return range.from ?? range.to ?? clampDate(new Date(), bounds)
 }
 
-export function isRangeWithin(
+export function isRangeAllowed(
   range: DateTimeRange,
   { min, max }: DateTimeBounds
 ) {
-  return [range.from, range.to].every(
-    (date) => !date || ((!min || date >= min) && (!max || date <= max))
+  const isOrdered = !range.from || !range.to || range.from <= range.to
+  return (
+    isOrdered &&
+    [range.from, range.to].every(
+      (date) => !date || ((!min || date >= min) && (!max || date <= max))
+    )
   )
 }
 
@@ -116,5 +120,6 @@ export function formatRange(range: DateTimeRange, locale?: string) {
   })
   if (range.from && range.to) return formatter.formatRange(range.from, range.to)
   if (range.from) return formatter.format(range.from)
+  if (range.to) return formatter.format(range.to)
   return null
 }

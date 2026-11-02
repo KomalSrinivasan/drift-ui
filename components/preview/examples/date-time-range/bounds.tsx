@@ -6,8 +6,8 @@ import { DateTimeRangePicker } from "@/registry/default/ui/date-time-range"
 import { Label } from "@/registry/default/ui/label"
 
 function bookableWindow(now: Date) {
-  const min = new Date(now)
-  min.setHours(min.getHours() + 2, 0, 0, 0)
+  const min = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+  min.setMinutes(60, 0, 0)
   const max = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 14)
   max.setHours(18, 0, 0, 0)
   return { min, max }

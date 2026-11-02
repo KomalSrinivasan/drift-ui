@@ -90,6 +90,18 @@ describe("duplicateSavedView", () => {
     expect(duplicated.isDefault).toBe(false)
     expect(duplicated.data).toEqual({ status: "open" })
   })
+
+  it("increments copy count when duplicating an existing copy", () => {
+    const v1 = { id: "1", name: "My View" }
+    const v2 = duplicateSavedView(v1, [v1])
+    expect(v2.name).toBe("My View (Copy)")
+
+    const v3 = duplicateSavedView(v2, [v1, v2])
+    expect(v3.name).toBe("My View (Copy 2)")
+
+    const v4 = duplicateSavedView(v3, [v1, v2, v3])
+    expect(v4.name).toBe("My View (Copy 3)")
+  })
 })
 
 describe("renameSavedView", () => {

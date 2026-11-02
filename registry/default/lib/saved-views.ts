@@ -1,3 +1,7 @@
+/**
+ * Represents a saved view configuration.
+ * Note: `data` must be structured-cloneable (serializable) if using duplicateSavedView.
+ */
 export interface SavedView<T = unknown> {
   id: string
   name: string
@@ -65,7 +69,10 @@ export function duplicateSavedView<T>(
   sourceView: SavedView<T>,
   existingViews: SavedView<T>[]
 ): SavedView<T> {
-  const newName = findUniqueViewName(`${sourceView.name} (Copy)`, existingViews)
+  const baseDuplicateName = / \(Copy(?: \d+)?\)$/.test(sourceView.name)
+    ? sourceView.name
+    : `${sourceView.name} (Copy)`
+  const newName = findUniqueViewName(baseDuplicateName, existingViews)
   return {
     id: generateViewId(),
     name: newName,

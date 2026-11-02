@@ -48,6 +48,8 @@ export interface SavedViewsProps<T = unknown> extends Omit<
   defaultActiveId?: string
   onActiveChange?: (activeId: string) => void
 
+  currentData?: T
+
   isDirty?: boolean
   onSave?: (view: SavedView<T>) => void
   onReset?: (view: SavedView<T>) => void
@@ -76,6 +78,7 @@ function SavedViews<T = unknown>({
   activeId: activeIdProp,
   defaultActiveId,
   onActiveChange,
+  currentData,
   isDirty = false,
   onSave,
   onReset,
@@ -123,25 +126,36 @@ function SavedViews<T = unknown>({
   )
 
   const [createOpen, setCreateOpen] = React.useState(false)
+  const [selectOpen, setSelectOpen] = React.useState(false)
   const [newViewName, setNewViewName] = React.useState("")
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [editingName, setEditingName] = React.useState("")
   const tabRefs = React.useRef<Map<string, HTMLButtonElement>>(new Map())
+  const prevEditingIdRef = React.useRef<string | null>(null)
+
+  React.useEffect(() => {
+    if (!editingId && prevEditingIdRef.current) {
+      tabRefs.current.get(prevEditingIdRef.current)?.focus()
+    }
+    prevEditingIdRef.current = editingId
+  }, [editingId])
 
   function handleSelect(id: string) {
     setActiveId(id)
+    setSelectOpen(false)
   }
 
   function handleCreateSubmit(e?: React.FormEvent) {
     e?.preventDefault()
     const name = newViewName.trim() || `View ${views.length + 1}`
-    const newView = createSavedView<T>(name)
+    const newView = createSavedView<T>(name, { data: currentData })
     const nextViews = [...views, newView]
     setViews(nextViews)
     setActiveId(newView.id)
     onCreate?.(newView)
     setNewViewName("")
     setCreateOpen(false)
+    setSelectOpen(false)
   }
 
   function handleStartRename(view: SavedView<T>) {
@@ -151,13 +165,11 @@ function SavedViews<T = unknown>({
 
   function handleRenameSubmit(id: string) {
     const trimmed = editingName.trim()
-    if (trimmed) {
+    const target = views.find((v) => v.id === id)
+    if (trimmed && target && trimmed !== target.name) {
       const nextViews = renameSavedView(views, id, trimmed)
       setViews(nextViews)
-      const target = views.find((v) => v.id === id)
-      if (target) {
-        onRename?.({ ...target, name: trimmed }, trimmed)
-      }
+      onRename?.({ ...target, name: trimmed }, trimmed)
     }
     setEditingId(null)
   }
@@ -172,6 +184,8 @@ function SavedViews<T = unknown>({
 
   function handleDelete(id: string) {
     if (views.length <= 1) return
+    const target = views.find((v) => v.id === id)
+    if (target?.isLocked) return
     const { views: nextViews, nextActiveId } = deleteSavedView(
       views,
       id,
@@ -261,7 +275,16 @@ function SavedViews<T = unknown>({
         type="button"
         size="sm"
         className="h-8 gap-1 px-2.5 text-xs shadow-xs"
-        onClick={() => onSave?.(activeView)}
+        onClick={() => {
+          const toSave =
+            currentData !== undefined
+              ? { ...activeView, data: currentData }
+              : activeView
+          if (currentData !== undefined) {
+            setViews(views.map((v) => (v.id === activeView.id ? toSave : v)))
+          }
+          onSave?.(toSave)
+        }}
       >
         <SaveIcon className="size-3.5" />
         Save
@@ -276,7 +299,7 @@ function SavedViews<T = unknown>({
         className={cn("flex flex-wrap items-center gap-2", className)}
         {...props}
       >
-        <Popover>
+        <Popover open={selectOpen} onOpenChange={setSelectOpen}>
           <PopoverTrigger
             type="button"
             className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors outline-none hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
@@ -300,12 +323,44 @@ function SavedViews<T = unknown>({
             <ChevronDownIcon className="size-4 opacity-50" />
           </PopoverTrigger>
           <PopoverContent align="start" className="w-56 p-1">
-            <div className="space-y-0.5">
+            <div role="listbox" aria-label={ariaLabel} className="space-y-0.5">
               {views.map((view) => {
-                const isActive = view.id === activeId
+                const isActive = view.id === activeView?.id
+                const isEditing = editingId === view.id
+
+                if (isEditing) {
+                  return (
+                    <form
+                      key={view.id}
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        handleRenameSubmit(view.id)
+                      }}
+                      className="flex items-center gap-1 p-1"
+                    >
+                      <Input
+                        autoFocus
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={() => handleRenameSubmit(view.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            e.preventDefault()
+                            setEditingId(null)
+                          }
+                        }}
+                        className="h-7 text-xs"
+                        aria-label="Rename view"
+                      />
+                    </form>
+                  )
+                }
+
                 return (
                   <div
                     key={view.id}
+                    role="option"
+                    aria-selected={isActive}
                     className={cn(
                       "group flex items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground",
                       isActive && "bg-accent/60 font-medium"
@@ -317,9 +372,12 @@ function SavedViews<T = unknown>({
                       onClick={() => handleSelect(view.id)}
                     >
                       {isActive ? (
-                        <CheckIcon className="size-3.5 text-primary" />
+                        <CheckIcon
+                          className="size-3.5 text-primary"
+                          aria-hidden="true"
+                        />
                       ) : (
-                        <span className="size-3.5" />
+                        <span className="size-3.5" aria-hidden="true" />
                       )}
                       <span className="truncate">{view.name}</span>
                       {view.isDefault && (
@@ -394,54 +452,18 @@ function SavedViews<T = unknown>({
       )}
       {...props}
     >
-      <div
-        role="tablist"
-        aria-label={ariaLabel}
-        className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border bg-muted/40 p-1"
-      >
-        {views.map((view, index) => {
-          const isActive = view.id === activeId
-          const isEditing = editingId === view.id
-
-          if (isEditing) {
+      <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border bg-muted/40 p-1">
+        <div
+          role="tablist"
+          aria-label={ariaLabel}
+          className="flex items-center gap-1"
+        >
+          {views.map((view, index) => {
+            if (editingId === view.id) return null
+            const isActive = view.id === activeView?.id
             return (
-              <form
-                key={view.id}
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  handleRenameSubmit(view.id)
-                }}
-                className="flex items-center"
-              >
-                <Input
-                  autoFocus
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  onBlur={() => handleRenameSubmit(view.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") {
-                      e.preventDefault()
-                      setEditingId(null)
-                    }
-                  }}
-                  className="h-7 w-28 px-2 py-0 text-xs md:text-xs"
-                  aria-label="Rename view"
-                />
-              </form>
-            )
-          }
-
-          return (
-            <div
-              key={view.id}
-              className={cn(
-                "group flex items-center rounded-md text-sm transition-colors",
-                isActive
-                  ? "bg-background text-foreground shadow-xs"
-                  : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
-              )}
-            >
               <button
+                key={view.id}
                 ref={(el) => {
                   if (el) tabRefs.current.set(view.id, el)
                   else tabRefs.current.delete(view.id)
@@ -457,7 +479,12 @@ function SavedViews<T = unknown>({
                   }
                 }}
                 onKeyDown={(e) => handleTabKeyDown(e, index, view)}
-                className="flex items-center gap-1.5 rounded-l-md px-2.5 py-1 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  isActive
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                )}
               >
                 {view.isDefault && (
                   <StarIcon
@@ -473,29 +500,53 @@ function SavedViews<T = unknown>({
                   />
                 )}
               </button>
+            )
+          })}
+        </div>
 
-              {(allowRename ||
-                allowDuplicate ||
-                allowSetDefault ||
-                allowDelete) && (
-                <ViewOptionsMenu
-                  view={view}
-                  isOnlyView={views.length <= 1}
-                  allowRename={allowRename}
-                  allowDuplicate={allowDuplicate}
-                  allowSetDefault={allowSetDefault}
-                  allowDelete={allowDelete}
-                  onStartRename={() => handleStartRename(view)}
-                  onDuplicate={() => handleDuplicate(view)}
-                  onSetDefault={() => handleSetDefault(view.id)}
-                  onDelete={() => handleDelete(view.id)}
-                />
-              )}
-            </div>
-          )
-        })}
+        {editingId && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleRenameSubmit(editingId)
+            }}
+            className="flex items-center px-1"
+          >
+            <Input
+              autoFocus
+              value={editingName}
+              onChange={(e) => setEditingName(e.target.value)}
+              onBlur={() => handleRenameSubmit(editingId)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault()
+                  setEditingId(null)
+                }
+              }}
+              className="h-7 w-28 px-2 py-0 text-xs md:text-xs"
+              aria-label="Rename view"
+            />
+          </form>
+        )}
 
-        {allowCreate && (
+        {(allowRename || allowDuplicate || allowSetDefault || allowDelete) &&
+          activeView &&
+          !editingId && (
+            <ViewOptionsMenu
+              view={activeView}
+              isOnlyView={views.length <= 1}
+              allowRename={allowRename}
+              allowDuplicate={allowDuplicate}
+              allowSetDefault={allowSetDefault}
+              allowDelete={allowDelete}
+              onStartRename={() => handleStartRename(activeView)}
+              onDuplicate={() => handleDuplicate(activeView)}
+              onSetDefault={() => handleSetDefault(activeView.id)}
+              onDelete={() => handleDelete(activeView.id)}
+            />
+          )}
+
+        {allowCreate && !editingId && (
           <Popover open={createOpen} onOpenChange={setCreateOpen}>
             <PopoverTrigger
               type="button"
@@ -573,76 +624,145 @@ function ViewOptionsMenu({
   onDelete: () => void
 }) {
   const [open, setOpen] = React.useState(false)
+  const menuRef = React.useRef<HTMLDivElement>(null)
+  const triggerRef = React.useRef<HTMLButtonElement>(null)
+
+  const items: {
+    label: string
+    icon: React.ReactNode
+    onClick: () => void
+    destructive?: boolean
+  }[] = []
+
+  if (allowRename && !view.isLocked) {
+    items.push({
+      label: "Rename",
+      icon: <PencilIcon className="size-3.5 text-muted-foreground" />,
+      onClick: onStartRename,
+    })
+  }
+
+  if (allowDuplicate) {
+    items.push({
+      label: "Duplicate",
+      icon: <CopyIcon className="size-3.5 text-muted-foreground" />,
+      onClick: onDuplicate,
+    })
+  }
+
+  if (allowSetDefault && !view.isDefault) {
+    items.push({
+      label: "Set as default",
+      icon: <StarIcon className="size-3.5 fill-amber-500 text-amber-500" />,
+      onClick: onSetDefault,
+    })
+  }
+
+  if (allowDelete && !view.isLocked && !isOnlyView) {
+    items.push({
+      label: "Delete",
+      icon: <Trash2Icon className="size-3.5" />,
+      onClick: onDelete,
+      destructive: true,
+    })
+  }
+
+  React.useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => {
+        const first = menuRef.current?.querySelector<HTMLButtonElement>(
+          '[role="menuitem"]:not([disabled])'
+        )
+        first?.focus()
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [open])
+
+  function handleItemKeyDown(
+    e: React.KeyboardEvent<HTMLButtonElement>,
+    index: number
+  ) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      e.stopPropagation()
+      const nextIndex = (index + 1) % items.length
+      const buttons = menuRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]:not([disabled])'
+      )
+      buttons?.[nextIndex]?.focus()
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      e.stopPropagation()
+      const prevIndex = (index - 1 + items.length) % items.length
+      const buttons = menuRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]:not([disabled])'
+      )
+      buttons?.[prevIndex]?.focus()
+    } else if (e.key === "Home") {
+      e.preventDefault()
+      e.stopPropagation()
+      const buttons = menuRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]:not([disabled])'
+      )
+      buttons?.[0]?.focus()
+    } else if (e.key === "End") {
+      e.preventDefault()
+      e.stopPropagation()
+      const buttons = menuRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]:not([disabled])'
+      )
+      buttons?.[buttons.length - 1]?.focus()
+    } else if (e.key === "Escape") {
+      e.preventDefault()
+      e.stopPropagation()
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
+        ref={triggerRef}
         type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
         aria-label={`Options for ${view.name}`}
-        className="flex size-6 items-center justify-center rounded-r-md px-1 text-muted-foreground opacity-70 transition-opacity outline-none hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring"
+        className="flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-opacity outline-none hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <MoreHorizontalIcon className="size-3" />
+        <MoreHorizontalIcon className="size-3.5" />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-44 p-1">
-        <div className="space-y-0.5 text-xs">
-          {allowRename && !view.isLocked && (
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                onStartRename()
-              }}
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors outline-none hover:bg-accent hover:text-accent-foreground"
-            >
-              <PencilIcon className="size-3.5 text-muted-foreground" />
-              Rename
-            </button>
-          )}
-
-          {allowDuplicate && (
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                onDuplicate()
-              }}
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors outline-none hover:bg-accent hover:text-accent-foreground"
-            >
-              <CopyIcon className="size-3.5 text-muted-foreground" />
-              Duplicate
-            </button>
-          )}
-
-          {allowSetDefault && !view.isDefault && (
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                onSetDefault()
-              }}
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors outline-none hover:bg-accent hover:text-accent-foreground"
-            >
-              <StarIcon className="size-3.5 text-amber-500" />
-              Set as default
-            </button>
-          )}
-
-          {allowDelete && !view.isLocked && !isOnlyView && (
-            <>
-              <div className="my-1 h-px bg-border" />
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label={`Options for ${view.name}`}
+          className="space-y-0.5 text-xs outline-none"
+        >
+          {items.map((item, index) => (
+            <React.Fragment key={item.label}>
+              {item.destructive && <div className="my-1 h-px bg-border" />}
               <button
                 type="button"
+                role="menuitem"
                 onClick={() => {
                   setOpen(false)
-                  onDelete()
+                  item.onClick()
                 }}
-                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-destructive transition-colors outline-none hover:bg-destructive/10"
+                onKeyDown={(e) => handleItemKeyDown(e, index)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors outline-none",
+                  item.destructive
+                    ? "text-destructive hover:bg-destructive/10 focus:bg-destructive/10"
+                    : "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                )}
               >
-                <Trash2Icon className="size-3.5" />
-                Delete
+                {item.icon}
+                {item.label}
               </button>
-            </>
-          )}
+            </React.Fragment>
+          ))}
         </div>
       </PopoverContent>
     </Popover>

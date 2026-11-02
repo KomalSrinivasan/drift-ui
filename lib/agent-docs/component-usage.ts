@@ -489,24 +489,26 @@ export function StandupRepeat({ start }: { start: Date }) {
   },
   "saved-views": {
     notes:
-      "SavedViews manages named combinations of filters, sorting and columns on table and list screens. Supports controlled or uncontrolled views and activeId through useControllableState. When isDirty is true, an unsaved indicator appears and Save/Discard buttons show up. Context menu on each view supports Rename (also accessible via F2 or double click), Duplicate, Set as default, and Delete (with safety guards against deleting the last view or locked views). Add button (+) creates a new view. Set variant='select' for a compact dropdown view switcher. Pure helpers live in @/lib/saved-views: createSavedView, duplicateSavedView, renameSavedView, deleteSavedView, and setDefaultSavedView. Installs button, input, badge, and popover.",
+      "SavedViews manages named combinations of filters, sorting and columns on table and list screens. For views that store configuration data, manage views and onViewsChange in controlled state, or pass currentData to attach to newly created views; data must be serializable if using duplicate. When isDirty is true, an unsaved indicator appears and Save/Discard buttons show up. Context menu on each view supports Rename (also accessible via F2 or double click), Duplicate, Set as default, and Delete (with safety guards against deleting the last view or locked views). Add button (+) creates a new view. Set variant='select' for a compact dropdown view switcher. Pure helpers live in @/lib/saved-views: createSavedView, duplicateSavedView, renameSavedView, deleteSavedView, and setDefaultSavedView. Installs button, input, badge, and popover.",
     example: `"use client"
 
 import { useState } from "react"
 import { SavedViews, type SavedView } from "@/components/ui/saved-views"
 
-const DEFAULT_VIEWS: SavedView[] = [
-  { id: "all", name: "All Issues", isDefault: true },
-  { id: "active", name: "Active Sprint" },
+const INITIAL_VIEWS: SavedView<{ status: string }>[] = [
+  { id: "all", name: "All Issues", isDefault: true, data: { status: "all" } },
+  { id: "active", name: "Active Sprint", data: { status: "active" } },
 ]
 
 export function IssueViewSwitcher() {
+  const [views, setViews] = useState(INITIAL_VIEWS)
   const [activeId, setActiveId] = useState("all")
   const [isDirty, setIsDirty] = useState(false)
 
   return (
     <SavedViews
-      defaultViews={DEFAULT_VIEWS}
+      views={views}
+      onViewsChange={setViews}
       activeId={activeId}
       onActiveChange={setActiveId}
       isDirty={isDirty}

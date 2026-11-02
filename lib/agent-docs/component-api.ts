@@ -1349,6 +1349,12 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           description: "Called when the active view changes.",
         },
         {
+          name: "currentData",
+          type: "T",
+          description:
+            "Current configuration data attached to new views and persisted on save in uncontrolled mode.",
+        },
+        {
           name: "isDirty",
           type: "boolean",
           default: "false",
@@ -1366,11 +1372,79 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           description: "Called when the Discard button is clicked.",
         },
         {
+          name: "onCreate",
+          type: "(view: SavedView<T>) => void",
+          description: "Called when a new view is created.",
+        },
+        {
+          name: "onRename",
+          type: "(view: SavedView<T>, newName: string) => void",
+          description: "Called when a view is renamed.",
+        },
+        {
+          name: "onDuplicate",
+          type: "(newView: SavedView<T>, sourceView: SavedView<T>) => void",
+          description: "Called when a view is duplicated.",
+        },
+        {
+          name: "onDelete",
+          type: "(deletedViewId: string) => void",
+          description: "Called when a view is deleted.",
+        },
+        {
+          name: "onSetDefault",
+          type: "(defaultViewId: string) => void",
+          description: "Called when a view is marked as default.",
+        },
+        {
           name: "variant",
           type: '"tabs" | "select"',
           default: '"tabs"',
           description:
             "Display mode: horizontal tablist or compact dropdown selector.",
+        },
+        {
+          name: "showReset",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether to show the Discard button when isDirty is true.",
+        },
+        {
+          name: "allowCreate",
+          type: "boolean",
+          default: "true",
+          description: "Whether to allow creating new views.",
+        },
+        {
+          name: "allowRename",
+          type: "boolean",
+          default: "true",
+          description: "Whether to allow renaming views.",
+        },
+        {
+          name: "allowDuplicate",
+          type: "boolean",
+          default: "true",
+          description: "Whether to allow duplicating views.",
+        },
+        {
+          name: "allowDelete",
+          type: "boolean",
+          default: "true",
+          description: "Whether to allow deleting views.",
+        },
+        {
+          name: "allowSetDefault",
+          type: "boolean",
+          default: "true",
+          description: "Whether to allow setting a view as default.",
+        },
+        {
+          name: "placeholder",
+          type: "string",
+          default: '"New view name..."',
+          description: "Placeholder text for new view inputs.",
         },
       ],
       rest: "<div>",

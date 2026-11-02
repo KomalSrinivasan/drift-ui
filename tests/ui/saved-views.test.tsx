@@ -168,12 +168,16 @@ describe("SavedViews", () => {
 
     render(<SavedViews defaultViews={SAMPLE_VIEWS} onRename={onRename} />)
 
+    // Make Active Sprint the active view
+    const tab = screen.getByRole("tab", { name: "Active Sprint" })
+    await user.click(tab)
+
     const optionsButton = screen.getByRole("button", {
       name: "Options for Active Sprint",
     })
     await user.click(optionsButton)
 
-    const renameOption = screen.getByRole("button", { name: "Rename" })
+    const renameOption = screen.getByRole("menuitem", { name: "Rename" })
     await user.click(renameOption)
 
     const renameInput = screen.getByRole("textbox", { name: "Rename view" })
@@ -205,7 +209,9 @@ describe("SavedViews", () => {
     await user.clear(renameInput)
     await user.type(renameInput, "Sprint 42{Enter}")
 
-    expect(screen.getByRole("tab", { name: "Sprint 42" })).toBeInTheDocument()
+    const renamedTab = screen.getByRole("tab", { name: "Sprint 42" })
+    expect(renamedTab).toBeInTheDocument()
+    expect(renamedTab).toHaveFocus()
   })
 
   it("duplicates a view via the options menu", async () => {
@@ -214,12 +220,15 @@ describe("SavedViews", () => {
 
     render(<SavedViews defaultViews={SAMPLE_VIEWS} onDuplicate={onDuplicate} />)
 
+    const tab = screen.getByRole("tab", { name: "Active Sprint" })
+    await user.click(tab)
+
     const optionsButton = screen.getByRole("button", {
       name: "Options for Active Sprint",
     })
     await user.click(optionsButton)
 
-    const duplicateOption = screen.getByRole("button", { name: "Duplicate" })
+    const duplicateOption = screen.getByRole("menuitem", { name: "Duplicate" })
     await user.click(duplicateOption)
 
     await waitFor(() => {
@@ -238,12 +247,15 @@ describe("SavedViews", () => {
       <SavedViews defaultViews={SAMPLE_VIEWS} onSetDefault={onSetDefault} />
     )
 
+    const tab = screen.getByRole("tab", { name: "Active Sprint" })
+    await user.click(tab)
+
     const optionsButton = screen.getByRole("button", {
       name: "Options for Active Sprint",
     })
     await user.click(optionsButton)
 
-    const setDefaultOption = screen.getByRole("button", {
+    const setDefaultOption = screen.getByRole("menuitem", {
       name: "Set as default",
     })
     await user.click(setDefaultOption)
@@ -268,7 +280,7 @@ describe("SavedViews", () => {
     })
     await user.click(optionsButton)
 
-    const deleteOption = screen.getByRole("button", { name: "Delete" })
+    const deleteOption = screen.getByRole("menuitem", { name: "Delete" })
     await user.click(deleteOption)
 
     expect(onDelete).toHaveBeenCalledWith("high")
@@ -306,5 +318,193 @@ describe("SavedViews", () => {
     await user.click(activeOption)
 
     expect(onActiveChange).toHaveBeenCalledWith("active")
+  })
+
+  it("renames a view in select mode", async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn()
+
+    render(
+      <SavedViews
+        variant="select"
+        defaultViews={SAMPLE_VIEWS}
+        onRename={onRename}
+      />
+    )
+
+    const trigger = screen.getByRole("button", {
+      name: /Saved views: All Issues/i,
+    })
+    await user.click(trigger)
+
+    const optionsButton = screen.getByRole("button", {
+      name: "Options for Active Sprint",
+    })
+    await user.click(optionsButton)
+
+    const renameOption = screen.getByRole("menuitem", { name: "Rename" })
+    await user.click(renameOption)
+
+    const renameInput = screen.getByRole("textbox", { name: "Rename view" })
+    expect(renameInput).toBeInTheDocument()
+    await user.clear(renameInput)
+    await user.type(renameInput, "Current Sprint{Enter}")
+
+    expect(onRename).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "active", name: "Current Sprint" }),
+      "Current Sprint"
+    )
+  })
+
+  it("closes select popover on view selection and creation", async () => {
+    const user = userEvent.setup()
+
+    render(<SavedViews variant="select" defaultViews={SAMPLE_VIEWS} />)
+
+    const trigger = screen.getByRole("button", {
+      name: /Saved views: All Issues/i,
+    })
+    await user.click(trigger)
+
+    expect(screen.getByRole("listbox")).toBeInTheDocument()
+
+    // Click a view -> popover closes
+    const option = screen.getByRole("button", { name: "Active Sprint" })
+    await user.click(option)
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+    })
+
+    // Open again and create a view -> popover closes
+    await user.click(trigger)
+    expect(screen.getByRole("listbox")).toBeInTheDocument()
+
+    const input = screen.getByPlaceholderText("New view name...")
+    await user.type(input, "Brand New View")
+    const addButton = screen.getByRole("button", { name: "Add" })
+    await user.click(addButton)
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+    })
+  })
+
+  it("falls back to default view when activeId does not match any view", () => {
+    render(<SavedViews defaultViews={SAMPLE_VIEWS} activeId="non-existent" />)
+
+    const defaultTab = screen.getByRole("tab", { name: "All Issues" })
+    expect(defaultTab).toHaveAttribute("aria-selected", "true")
+    expect(defaultTab).toHaveAttribute("tabindex", "0")
+  })
+
+  it("returns focus to the tab after completing or cancelling rename", async () => {
+    const user = userEvent.setup()
+
+    render(<SavedViews defaultViews={SAMPLE_VIEWS} />)
+
+    const tab = screen.getByRole("tab", { name: "Active Sprint" })
+    tab.focus()
+    await user.keyboard("{F2}")
+
+    const input = screen.getByRole("textbox", { name: "Rename view" })
+    expect(input).toHaveFocus()
+
+    // Cancel with Escape
+    await user.keyboard("{Escape}")
+    expect(screen.getByRole("tab", { name: "Active Sprint" })).toHaveFocus()
+
+    // Enter again and commit
+    await user.keyboard("{F2}")
+    const input2 = screen.getByRole("textbox", { name: "Rename view" })
+    await user.type(input2, " 2{Enter}")
+    expect(screen.getByRole("tab", { name: "Active Sprint 2" })).toHaveFocus()
+  })
+
+  it("does not call onRename or update views when rename name is unchanged", async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn()
+    const onViewsChange = vi.fn()
+
+    render(
+      <SavedViews
+        defaultViews={SAMPLE_VIEWS}
+        onRename={onRename}
+        onViewsChange={onViewsChange}
+      />
+    )
+
+    const tab = screen.getByRole("tab", { name: "Active Sprint" })
+    tab.focus()
+    await user.keyboard("{F2}")
+
+    const input = screen.getByRole("textbox", { name: "Rename view" })
+    expect(input).toBeInTheDocument()
+    await user.keyboard("{Enter}")
+
+    expect(onRename).not.toHaveBeenCalled()
+    expect(onViewsChange).not.toHaveBeenCalled()
+  })
+
+  it("does not show delete option for locked views", async () => {
+    const user = userEvent.setup()
+    const viewsWithLocked: SavedView[] = [
+      { id: "all", name: "All Issues", isDefault: true, isLocked: true },
+      { id: "custom", name: "Custom View" },
+    ]
+
+    render(<SavedViews defaultViews={viewsWithLocked} />)
+
+    // All Issues is locked and active
+    const optionsButton = screen.getByRole("button", {
+      name: "Options for All Issues",
+    })
+    await user.click(optionsButton)
+
+    expect(
+      screen.queryByRole("menuitem", { name: "Delete" })
+    ).not.toBeInTheDocument()
+  })
+
+  it("does not show delete option when only one view exists", async () => {
+    const user = userEvent.setup()
+    const singleView: SavedView[] = [{ id: "solo", name: "Solo View" }]
+
+    render(<SavedViews defaultViews={singleView} />)
+
+    const optionsButton = screen.getByRole("button", {
+      name: "Options for Solo View",
+    })
+    await user.click(optionsButton)
+
+    expect(
+      screen.queryByRole("menuitem", { name: "Delete" })
+    ).not.toBeInTheDocument()
+  })
+
+  it("supports arrow key navigation in the options menu", async () => {
+    const user = userEvent.setup()
+
+    render(<SavedViews defaultViews={SAMPLE_VIEWS} />)
+
+    const optionsButton = screen.getByRole("button", {
+      name: "Options for All Issues",
+    })
+    await user.click(optionsButton)
+
+    const menu = screen.getByRole("menu")
+    expect(menu).toBeInTheDocument()
+
+    const menuItems = screen.getAllByRole("menuitem")
+    menuItems[0].focus()
+    expect(menuItems[0]).toHaveFocus()
+
+    // ArrowDown -> next item
+    await user.keyboard("{ArrowDown}")
+    expect(menuItems[1]).toHaveFocus()
+
+    // ArrowUp -> back to first item
+    await user.keyboard("{ArrowUp}")
+    expect(menuItems[0]).toHaveFocus()
   })
 })

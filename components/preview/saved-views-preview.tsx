@@ -100,7 +100,9 @@ export function SavedViewsPreview() {
   function handleActiveChange(nextId: string) {
     setActiveId(nextId)
     const target = views.find((v) => v.id === nextId)
-    setActiveFilters(target?.data ?? [])
+    if (target) {
+      setActiveFilters(target.data ?? [])
+    }
   }
 
   const savedFilters = currentView?.data ?? []
@@ -137,10 +139,12 @@ export function SavedViewsPreview() {
         onViewsChange={setViews}
         activeId={activeId}
         onActiveChange={handleActiveChange}
+        currentData={activeFilters}
         isDirty={isDirty}
         onSave={handleSave}
         onReset={handleReset}
         onCreate={handleCreate}
+        onDuplicate={(newView) => setActiveFilters(newView.data ?? [])}
       />
 
       <div className="flex items-center gap-2">

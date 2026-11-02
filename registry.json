@@ -526,6 +526,31 @@
       ]
     },
     {
+      "name": "saved-views",
+      "type": "registry:ui",
+      "title": "Saved Views",
+      "description": "Switch, create, rename, duplicate, and save table and list view configurations.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "utils",
+        "button",
+        "input",
+        "badge",
+        "popover",
+        "@drift-ui/use-controllable-state"
+      ],
+      "files": [
+        {
+          "path": "registry/default/ui/saved-views.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/default/lib/saved-views.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "shortcut-cheatsheet",
       "type": "registry:ui",
       "title": "Shortcut Cheatsheet",

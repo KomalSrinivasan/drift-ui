@@ -508,6 +508,37 @@ export function StandupRepeat({ start }: { start: Date }) {
   return <RecurrenceEditor aria-label="Repeat" value={rule} onValueChange={setRule} start={start} showPreview={3} />
 }`,
   },
+  "saved-views": {
+    notes:
+      "SavedViews manages named combinations of filters, sorting and columns on table and list screens. For views that store configuration data, manage views and onViewsChange in controlled state, or pass currentData to attach to newly created views; data must be serializable if using duplicate. When isDirty is true, an unsaved indicator appears and Save/Discard buttons show up. Context menu on each view supports Rename (also accessible via F2 or double click), Duplicate, Set as default, and Delete (with safety guards against deleting the last view or locked views). Add button (+) creates a new view. Set variant='select' for a compact dropdown view switcher. Pure helpers live in @/lib/saved-views: createSavedView, duplicateSavedView, renameSavedView, deleteSavedView, and setDefaultSavedView. Installs button, input, badge, and popover.",
+    example: `"use client"
+
+import { useState } from "react"
+import { SavedViews, type SavedView } from "@/components/ui/saved-views"
+
+const INITIAL_VIEWS: SavedView<{ status: string }>[] = [
+  { id: "all", name: "All Issues", isDefault: true, data: { status: "all" } },
+  { id: "active", name: "Active Sprint", data: { status: "active" } },
+]
+
+export function IssueViewSwitcher() {
+  const [views, setViews] = useState(INITIAL_VIEWS)
+  const [activeId, setActiveId] = useState("all")
+  const [isDirty, setIsDirty] = useState(false)
+
+  return (
+    <SavedViews
+      views={views}
+      onViewsChange={setViews}
+      activeId={activeId}
+      onActiveChange={setActiveId}
+      isDirty={isDirty}
+      onSave={(view) => setIsDirty(false)}
+      onReset={(view) => setIsDirty(false)}
+    />
+  )
+}`,
+  },
   "shortcut-cheatsheet": {
     notes:
       "Mount it once near the app root. Pressing trigger opens a dialog listing sections of shortcuts, with focus in a search field that matches shortcut labels and section titles. keys uses the same format as ShortcutRecorder ('Mod+K', not 'mod+k'), so recorded bindings can be passed straight into sections and render with the same platform symbols. trigger is '?' by default and also takes a shortcut string such as 'Mod+/'. It is ignored in text inputs, textareas, selects and contenteditable elements, and an empty string turns it off. Control open and onOpenChange to open it from a button or menu item, since mouse and touch users have no key to press. Closing returns focus to whatever opened it. If that element unmounts, as a menu item does, pass onCloseAutoFocus on Radix or finalFocus on Base UI to choose the target. If two cheatsheets share a page, give them different triggers. Escape closes it and clears the search. Installs dialog, input and shortcut-recorder.",

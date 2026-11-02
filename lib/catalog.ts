@@ -93,6 +93,11 @@ const ENTRY_LAYOUT: {
     category: "workflow",
     stageClassName: "flex-col flex-nowrap items-stretch justify-start",
   },
+  {
+    slug: "permission-matrix",
+    category: "workflow",
+    stageClassName: "flex-col flex-nowrap items-stretch",
+  },
   { slug: "shortcut-cheatsheet", category: "workflow" },
   {
     slug: "tour",

@@ -1,0 +1,285 @@
+export interface PermissionRole {
+  id: string
+  name: string
+  description?: string
+  disabled?: boolean
+  inheritsFrom?: string | string[]
+}
+
+export interface PermissionAction {
+  id: string
+  name: string
+  description?: string
+  disabled?: boolean
+}
+
+export interface PermissionGroup {
+  id: string
+  name: string
+  description?: string
+  permissions: PermissionAction[]
+}
+
+export type PermissionGrants = Record<string, string[]>
+
+export interface PermissionStatus {
+  granted: boolean
+  direct: boolean
+  inherited: boolean
+  inheritedFrom?: string
+}
+
+/**
+ * Resolves role inheritance chains recursively.
+ * Detects cycles to prevent infinite loops.
+ */
+export function resolveRoleInheritance(
+  roles: PermissionRole[]
+): Map<string, string[]> {
+  const roleMap = new Map(roles.map((r) => [r.id, r]))
+  const result = new Map<string, string[]>()
+
+  for (const role of roles) {
+    const ancestors: string[] = []
+    const visited = new Set<string>([role.id])
+    const queue = Array.isArray(role.inheritsFrom)
+      ? [...role.inheritsFrom]
+      : role.inheritsFrom
+        ? [role.inheritsFrom]
+        : []
+
+    while (queue.length > 0) {
+      const currentId = queue.shift()!
+      if (!visited.has(currentId)) {
+        visited.add(currentId)
+        ancestors.push(currentId)
+        const parentRole = roleMap.get(currentId)
+        if (parentRole?.inheritsFrom) {
+          const nextParents = Array.isArray(parentRole.inheritsFrom)
+            ? parentRole.inheritsFrom
+            : [parentRole.inheritsFrom]
+          queue.push(...nextParents)
+        }
+      }
+    }
+    result.set(role.id, ancestors)
+  }
+
+  return result
+}
+
+/**
+ * Computes whether a permission is granted directly or through an ancestor role.
+ */
+export function getPermissionStatus(
+  roleId: string,
+  permissionId: string,
+  grants: PermissionGrants,
+  roles: PermissionRole[] = [],
+  inheritanceMap?: Map<string, string[]>
+): PermissionStatus {
+  const directGrants = grants[roleId] ?? []
+  if (directGrants.includes(permissionId)) {
+    return {
+      granted: true,
+      direct: true,
+      inherited: false,
+    }
+  }
+
+  const map = inheritanceMap ?? resolveRoleInheritance(roles)
+  const ancestors = map.get(roleId) ?? []
+  const roleMap = new Map(roles.map((r) => [r.id, r]))
+
+  for (const ancestorId of ancestors) {
+    const ancestorGrants = grants[ancestorId] ?? []
+    if (ancestorGrants.includes(permissionId)) {
+      const ancestorRole = roleMap.get(ancestorId)
+      return {
+        granted: true,
+        direct: false,
+        inherited: true,
+        inheritedFrom: ancestorRole?.name ?? ancestorId,
+      }
+    }
+  }
+
+  return {
+    granted: false,
+    direct: false,
+    inherited: false,
+  }
+}
+
+/**
+ * Calculates the tri-state check status for an entire permission group under a specific role.
+ */
+export function getGroupStatus(
+  roleId: string,
+  group: PermissionGroup,
+  grants: PermissionGrants,
+  roles: PermissionRole[] = [],
+  inheritanceMap?: Map<string, string[]>
+): "checked" | "unchecked" | "indeterminate" {
+  if (group.permissions.length === 0) {
+    return "unchecked"
+  }
+
+  const map = inheritanceMap ?? resolveRoleInheritance(roles)
+  let grantedCount = 0
+
+  for (const action of group.permissions) {
+    const status = getPermissionStatus(roleId, action.id, grants, roles, map)
+    if (status.granted) {
+      grantedCount++
+    }
+  }
+
+  if (grantedCount === 0) return "unchecked"
+  if (grantedCount === group.permissions.length) return "checked"
+  return "indeterminate"
+}
+
+/**
+ * Toggles an individual permission grant for a role, returning an updated grants record.
+ */
+export function togglePermissionGrant(
+  grants: PermissionGrants,
+  roleId: string,
+  permissionId: string
+): PermissionGrants {
+  const current = grants[roleId] ?? []
+  const has = current.includes(permissionId)
+  const next = has
+    ? current.filter((id) => id !== permissionId)
+    : [...current, permissionId]
+
+  return {
+    ...grants,
+    [roleId]: next,
+  }
+}
+
+/**
+ * Toggles all permissions in a group for a role.
+ * If currently "checked", ungrants direct permissions in the group.
+ * If "unchecked" or "indeterminate", grants all ungranted permissions in the group.
+ */
+export function toggleGroupGrants(
+  grants: PermissionGrants,
+  roleId: string,
+  group: PermissionGroup,
+  roles: PermissionRole[] = [],
+  inheritanceMap?: Map<string, string[]>
+): PermissionGrants {
+  const status = getGroupStatus(roleId, group, grants, roles, inheritanceMap)
+  const currentDirect = grants[roleId] ?? []
+  const groupActionIds = group.permissions.map((p) => p.id)
+
+  if (status === "checked") {
+    // Ungrant all permissions in this group
+    const next = currentDirect.filter((id) => !groupActionIds.includes(id))
+    return {
+      ...grants,
+      [roleId]: next,
+    }
+  }
+
+  // Grant all permissions in this group
+  const toAdd = groupActionIds.filter((id) => !currentDirect.includes(id))
+  return {
+    ...grants,
+    [roleId]: [...currentDirect, ...toAdd],
+  }
+}
+
+/**
+ * Toggles all permissions in the matrix for a role.
+ */
+export function toggleAllGrants(
+  grants: PermissionGrants,
+  roleId: string,
+  allPermissions: PermissionAction[],
+  shouldGrant?: boolean
+): PermissionGrants {
+  const current = grants[roleId] ?? []
+  const allIds = allPermissions.map((p) => p.id)
+  const grant = shouldGrant ?? current.length < allIds.length
+
+  return {
+    ...grants,
+    [roleId]: grant ? Array.from(new Set([...current, ...allIds])) : [],
+  }
+}
+
+/**
+ * Filters permission groups and their child permissions by search query.
+ */
+export function filterPermissionGroups(
+  groups: PermissionGroup[],
+  searchQuery: string
+): PermissionGroup[] {
+  const query = searchQuery.trim().toLowerCase()
+  if (!query) return groups
+
+  return groups
+    .map((group) => {
+      const groupMatches =
+        group.name.toLowerCase().includes(query) ||
+        (group.description?.toLowerCase().includes(query) ?? false)
+
+      if (groupMatches) {
+        return group
+      }
+
+      const matchingPermissions = group.permissions.filter(
+        (action) =>
+          action.name.toLowerCase().includes(query) ||
+          action.id.toLowerCase().includes(query) ||
+          (action.description?.toLowerCase().includes(query) ?? false)
+      )
+
+      if (matchingPermissions.length > 0) {
+        return {
+          ...group,
+          permissions: matchingPermissions,
+        }
+      }
+
+      return null
+    })
+    .filter((g): g is PermissionGroup => g !== null)
+}
+
+/**
+ * Computes next cell coordinates in a grid for 2D keyboard navigation.
+ */
+export function getGridNextCoordinates(
+  current: [number, number],
+  key: string,
+  rowCount: number,
+  colCount: number
+): [number, number] {
+  const [row, col] = current
+
+  switch (key) {
+    case "ArrowUp":
+      return [Math.max(0, row - 1), col]
+    case "ArrowDown":
+      return [Math.min(rowCount - 1, row + 1), col]
+    case "ArrowLeft":
+      return [row, Math.max(0, col - 1)]
+    case "ArrowRight":
+      return [row, Math.min(colCount - 1, col + 1)]
+    case "Home":
+      return [row, 0]
+    case "End":
+      return [row, colCount - 1]
+    case "PageUp":
+      return [0, col]
+    case "PageDown":
+      return [rowCount - 1, col]
+    default:
+      return current
+  }
+}

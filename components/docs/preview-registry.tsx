@@ -36,6 +36,7 @@ import { MentionTextareaPreview } from "@/components/preview/mention-textarea-pr
 import { MultiSelectPreview } from "@/components/preview/multi-select-preview"
 import { NumberInputPreview } from "@/components/preview/number-input-preview"
 import { PasswordInputPreview } from "@/components/preview/password-input-preview"
+import { PermissionMatrixPreview } from "@/components/preview/permission-matrix-preview"
 import { PopoverPreview } from "@/components/preview/popover-preview"
 import { PhoneInputPreview } from "@/components/preview/phone-input-preview"
 import { RatingPreview } from "@/components/preview/rating-preview"
@@ -79,6 +80,7 @@ export const PREVIEWS: Record<string, ComponentType> = {
   "multi-select": MultiSelectPreview,
   "number-input": NumberInputPreview,
   "password-input": PasswordInputPreview,
+  "permission-matrix": PermissionMatrixPreview,
   popover: PopoverPreview,
   "phone-input": PhoneInputPreview,
   rating: RatingPreview,

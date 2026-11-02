@@ -96,11 +96,26 @@ export function BrandColorField() {
   },
   "date-time-range": {
     notes:
-      "DateTimeRangePicker with value/defaultValue of { from?: Date, to?: Date } and onValueChange. Start and end times default to 09:00 and 17:00 and are edited in the popover. Installs the shadcn calendar and popover. Props: locale, placeholder, numberOfMonths, disabled, id.",
-    example: `import { DateTimeRangePicker } from "@/components/ui/date-time-range"
+      "DateTimeRangePicker with value/defaultValue of { from?: Date, to?: Date } and onValueChange. Start and end times default to 09:00 and 17:00 and are edited with two TimeFields in the popover. locale formats the trigger and picks a 12 or 24 hour clock. presets takes { label, value } items; build them once (useState or useMemo) so the pressed preset still matches after a re-render. min and max disable days outside the bounds and clamp times on the edge days, and the end never goes before the start. The local time zone is shown next to each time; the picker does not convert zones. Other props go to the trigger button, so pass id for a Label. Installs the shadcn calendar and popover and drift's time-field.",
+    example: `"use client"
 
-export function MaintenanceWindowField() {
-  return <DateTimeRangePicker id="maintenance-window" placeholder="Pick a maintenance window" />
+import { useState } from "react"
+import { DateTimeRangePicker, type DateTimeRangePreset } from "@/components/ui/date-time-range"
+
+function lastDays(days: number): DateTimeRangePreset {
+  const now = new Date()
+  return {
+    label: \`Last \${days} days\`,
+    value: {
+      from: new Date(now.getFullYear(), now.getMonth(), now.getDate() - days + 1),
+      to: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59),
+    },
+  }
+}
+
+export function ReportPeriodField() {
+  const [presets] = useState(() => [lastDays(7), lastDays(30)])
+  return <DateTimeRangePicker id="report-period" presets={presets} />
 }`,
   },
   "description-list": {

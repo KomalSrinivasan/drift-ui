@@ -146,4 +146,21 @@ describe("toggleChecked", () => {
     )
     expect(toggleChecked(loaded, ["remote"], "remote/1")).toEqual(["remote/2"])
   })
+
+  it("does not pass a checked branch down to a disabled lazy child", () => {
+    const loaded: TreeData[] = [
+      {
+        id: "remote",
+        children: [
+          { id: "remote/1" },
+          { id: "remote/2" },
+          { id: "remote/locked", disabled: true },
+        ],
+      },
+    ]
+    const states = checkedStates(loaded, new Set(["remote"]))
+    expect(states.get("remote/locked")).toBe(false)
+    expect(states.get("remote")).toBe("mixed")
+    expect(toggleChecked(loaded, ["remote"], "remote/1")).toEqual(["remote/2"])
+  })
 })

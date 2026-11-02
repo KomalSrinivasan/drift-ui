@@ -108,7 +108,7 @@ function TreeView({
   const [viewport, setViewport] = React.useState({ top: 0, height: 0 })
   const listRef = React.useRef<HTMLUListElement>(null)
   const itemRefs = React.useRef(new Map<string, HTMLLIElement>())
-  const requested = React.useRef(new Set<string>())
+  const requested = React.useRef(new Map<string, object>())
   const pendingFocus = React.useRef(false)
   const typeahead = React.useRef({ query: "", lastKeyAt: 0 })
   const statusId = React.useId()
@@ -163,8 +163,10 @@ function TreeView({
         continue
       }
       const { id } = row.node
-      requested.current.add(id)
-      loadChildren(row.node).catch(() => {
+      const request = {}
+      requested.current.set(id, request)
+      new Promise((resolve) => resolve(loadChildren(row.node))).catch(() => {
+        if (requested.current.get(id) !== request) return
         requested.current.delete(id)
         setFailed((current) => new Set(current).add(id))
       })

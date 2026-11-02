@@ -2113,7 +2113,7 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
         },
         {
           name: "onSelectedChange",
-          type: "(id: string) => void | (ids: string[]) => void",
+          type: "((id: string) => void) | ((ids: string[]) => void)",
           description:
             "Called with the selected id, or with every checked id when multiple.",
         },

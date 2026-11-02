@@ -81,7 +81,7 @@ export function stepNode<T extends TreeData>(
 export function checkedStates(nodes: TreeData[], checked: ReadonlySet<string>) {
   const states = new Map<string, CheckedState>()
   function visit(node: TreeData, inherited: boolean): CheckedState {
-    const own = inherited || checked.has(node.id)
+    const own = checked.has(node.id) || (inherited && !node.disabled)
     let state: CheckedState = own
     if (node.children?.length) {
       const children = node.children.map((child) => visit(child, own))

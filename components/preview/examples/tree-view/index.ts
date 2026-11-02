@@ -31,7 +31,7 @@ export const examples: ComponentExample[] = [
     id: "virtual",
     title: "10,000 rows",
     description:
-      "virtual renders only the rows in view. Give the tree a height. Press End and then ArrowUp after expanding: focus follows rows that were never rendered.",
+      "virtual renders the rows in view plus a few above and below. Give the tree a height. Expand, click a row, then press End and ArrowUp: focus follows rows that were never rendered.",
     Preview: TreeViewVirtualPreview,
   },
   {

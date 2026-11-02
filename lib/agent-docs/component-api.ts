@@ -1479,6 +1479,152 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
         "Import from @/lib/recurrence to read, write, summarize or expand a rule outside the editor.",
     },
   ],
+  "saved-views": [
+    {
+      name: "SavedViews",
+      description:
+        "Switch, create, rename, duplicate, delete and persist named view configurations with an unsaved changes state.",
+      props: [
+        {
+          name: "views",
+          type: "SavedView<T>[]",
+          description: "Controlled list of views.",
+        },
+        {
+          name: "defaultViews",
+          type: "SavedView<T>[]",
+          default: "[]",
+          description: "Initial list of views when uncontrolled.",
+        },
+        {
+          name: "onViewsChange",
+          type: "(views: SavedView<T>[]) => void",
+          description:
+            "Called when views are created, renamed, duplicated, or deleted.",
+        },
+        {
+          name: "activeId",
+          type: "string",
+          description: "Controlled active view ID.",
+        },
+        {
+          name: "defaultActiveId",
+          type: "string",
+          description: "Initial active view ID when uncontrolled.",
+        },
+        {
+          name: "onActiveChange",
+          type: "(activeId: string) => void",
+          description: "Called when the active view changes.",
+        },
+        {
+          name: "currentData",
+          type: "T",
+          description:
+            "Current configuration data attached to new views and persisted on save in uncontrolled mode.",
+        },
+        {
+          name: "isDirty",
+          type: "boolean",
+          default: "false",
+          description:
+            "Whether the current view has unsaved changes. Shows unsaved indicator and Save/Discard buttons.",
+        },
+        {
+          name: "onSave",
+          type: "(view: SavedView<T>) => void",
+          description: "Called when the Save button is clicked.",
+        },
+        {
+          name: "onReset",
+          type: "(view: SavedView<T>) => void",
+          description: "Called when the Discard button is clicked.",
+        },
+        {
+          name: "onCreate",
+          type: "(view: SavedView<T>) => void",
+          description: "Called when a new view is created.",
+        },
+        {
+          name: "onRename",
+          type: "(view: SavedView<T>, newName: string) => void",
+          description: "Called when a view is renamed.",
+        },
+        {
+          name: "onDuplicate",
+          type: "(newView: SavedView<T>, sourceView: SavedView<T>) => void",
+          description: "Called when a view is duplicated.",
+        },
+        {
+          name: "onDelete",
+          type: "(deletedViewId: string) => void",
+          description: "Called when a view is deleted.",
+        },
+        {
+          name: "onSetDefault",
+          type: "(defaultViewId: string) => void",
+          description: "Called when a view is marked as default.",
+        },
+        {
+          name: "variant",
+          type: '"tabs" | "select"',
+          default: '"tabs"',
+          description:
+            "Display mode: horizontal tablist or compact dropdown selector.",
+        },
+        {
+          name: "showReset",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether to show the Discard button when isDirty is true.",
+        },
+        {
+          name: "allowCreate",
+          type: "boolean",
+          default: "true",
+          description: "Whether to allow creating new views.",
+        },
+        {
+          name: "allowRename",
+          type: "boolean",
+          default: "true",
+          description: "Whether to allow renaming views.",
+        },
+        {
+          name: "allowDuplicate",
+          type: "boolean",
+          default: "true",
+          description: "Whether to allow duplicating views.",
+        },
+        {
+          name: "allowDelete",
+          type: "boolean",
+          default: "true",
+          description: "Whether to allow deleting views.",
+        },
+        {
+          name: "allowSetDefault",
+          type: "boolean",
+          default: "true",
+          description: "Whether to allow setting a view as default.",
+        },
+        {
+          name: "placeholder",
+          type: "string",
+          default: '"New view name..."',
+          description: "Placeholder text for new view inputs.",
+        },
+      ],
+      rest: "<div>",
+    },
+    {
+      name: "createSavedView, duplicateSavedView, renameSavedView, deleteSavedView, setDefaultSavedView",
+      signature:
+        "createSavedView(name: string, options?: Partial<SavedView<T>>): SavedView<T>; duplicateSavedView(source: SavedView<T>, views: SavedView<T>[]): SavedView<T>; renameSavedView(views: SavedView<T>[], id: string, name: string): SavedView<T>[]; deleteSavedView(views: SavedView<T>[], id: string, activeId?: string): { views: SavedView<T>[]; nextActiveId: string | null }; setDefaultSavedView(views: SavedView<T>[], id: string): SavedView<T>[]",
+      description: "Pure logic helpers imported from @/lib/saved-views.",
+    },
+  ],
   "shortcut-cheatsheet": [
     {
       name: "ShortcutCheatsheet",

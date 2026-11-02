@@ -341,6 +341,27 @@ export function NameField() {
   )
 }`,
   },
+  "masked-input": {
+    notes:
+      "MaskedInput and CurrencyInput format typed input while storing unmasked or numeric values. MaskedInput takes mask (tokens: # digit, a or A letter, * alphanumeric) and stores raw unmasked characters in value/onValueChange or defaultValue. Caret position does not jump when inserting or deleting characters over fixed mask delimiters. CurrencyInput accepts currency and locale to format currency with Intl.NumberFormat live while storing integer cents (number | null) in value/onValueChange. Supports min and max clamping (enforced on blur and capping max during input), and name submits the raw value or cents via a hidden input.",
+    example: `import { CurrencyInput, MaskedInput } from "@/components/ui/masked-input"
+import { Label } from "@/components/ui/label"
+
+export function PaymentFields() {
+  return (
+    <div className="grid gap-3">
+      <div className="grid gap-1.5">
+        <Label htmlFor="card">Card number</Label>
+        <MaskedInput id="card" mask="#### #### #### ####" placeholder="4242 4242 4242 4242" />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="price">Amount</Label>
+        <CurrencyInput id="price" currency="USD" locale="en-US" defaultValue={4999} />
+      </div>
+    </div>
+  )
+}`,
+  },
   "mention-textarea": {
     notes:
       "Textarea that opens a suggestion list when the caret follows a trigger character. triggers maps a character to options, for example { '@': people, '#': channels }, each option { value, label, description? }. Selecting inserts trigger + value. Value is plain text with value/defaultValue/onValueChange.",

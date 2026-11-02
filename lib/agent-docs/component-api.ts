@@ -839,6 +839,93 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       rest: "<label>",
     },
   ],
+  "masked-input": [
+    {
+      name: "MaskedInput",
+      description:
+        "Input that formats typed characters according to a mask pattern while storing the raw unmasked value.",
+      props: [
+        {
+          name: "mask",
+          type: "string",
+          required: true,
+          description:
+            "Mask pattern where # matches digits, a or A matches letters, and * matches alphanumeric characters.",
+        },
+        {
+          name: "definitions",
+          type: "Record<string, RegExp>",
+          description:
+            "Custom character token definitions mapping token character to matching RegExp pattern.",
+        },
+        STATE_PROPS.value("string", "unmasked raw string"),
+        STATE_PROPS.defaultValue("string", '""'),
+        STATE_PROPS.onValueChange(
+          "(value: string, formattedValue: string) => void",
+          "with the unmasked and formatted values"
+        ),
+        {
+          name: "name",
+          type: "string",
+          description: "Submits the raw unmasked string via a hidden input.",
+        },
+        {
+          name: "disabled",
+          type: "boolean",
+          description: "Disables the input.",
+        },
+      ],
+      rest: "<input>",
+    },
+    {
+      name: "CurrencyInput",
+      description:
+        "Input that formats monetary amounts according to currency and locale while storing integer cents.",
+      props: [
+        {
+          name: "currency",
+          type: "string",
+          default: '"USD"',
+          description: "ISO 4217 currency code (e.g. USD, EUR, JPY, GBP).",
+        },
+        {
+          name: "locale",
+          type: "string",
+          default: '"en-US"',
+          description:
+            "BCP 47 language tag for number and currency formatting.",
+        },
+        STATE_PROPS.value("number | null", "amount in integer cents"),
+        STATE_PROPS.defaultValue("number | null", "null"),
+        STATE_PROPS.onValueChange(
+          "(value: number | null, formattedValue: string) => void",
+          "with integer cents and formatted text"
+        ),
+        {
+          name: "min",
+          type: "number",
+          description: "Minimum allowed amount in cents. Enforced on blur.",
+        },
+        {
+          name: "max",
+          type: "number",
+          description:
+            "Maximum allowed amount in cents. Enforced during typing and on blur.",
+        },
+        {
+          name: "name",
+          type: "string",
+          description: "Submits the integer cents via a hidden input.",
+        },
+        {
+          name: "disabled",
+          type: "boolean",
+          description: "Disables the input.",
+        },
+      ],
+      rest: "<input>",
+    },
+  ],
   "mention-textarea": [
     {
       name: "MentionTextarea",

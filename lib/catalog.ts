@@ -61,6 +61,7 @@ const ENTRY_LAYOUT: {
   { slug: "file-dropzone", category: "inputs" },
   { slug: "image-cropper", category: "inputs" },
   { slug: "inline-edit", category: "inputs" },
+  { slug: "masked-input", category: "inputs" },
   { slug: "mention-textarea", category: "inputs" },
   { slug: "multi-select", category: "inputs" },
   { slug: "number-input", category: "inputs" },

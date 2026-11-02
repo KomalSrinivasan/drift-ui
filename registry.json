@@ -362,6 +362,24 @@
       ]
     },
     {
+      "name": "masked-input",
+      "type": "registry:ui",
+      "title": "Masked Input",
+      "description": "Pattern-masked inputs and localized currency formatting with stable caret positioning.",
+      "dependencies": [],
+      "registryDependencies": ["utils", "@drift-ui/use-controllable-state"],
+      "files": [
+        {
+          "path": "registry/default/ui/masked-input.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/default/lib/masked-input.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "mention-textarea",
       "type": "registry:ui",
       "title": "Mention Textarea",

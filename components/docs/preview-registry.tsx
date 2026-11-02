@@ -31,6 +31,7 @@ import { InlineEditPreview } from "@/components/preview/inline-edit-preview"
 import { InputPreview } from "@/components/preview/input-preview"
 import { JsonViewerPreview } from "@/components/preview/json-viewer-preview"
 import { LabelPreview } from "@/components/preview/label-preview"
+import { MaskedInputPreview } from "@/components/preview/masked-input-preview"
 import { MentionTextareaPreview } from "@/components/preview/mention-textarea-preview"
 import { MultiSelectPreview } from "@/components/preview/multi-select-preview"
 import { NumberInputPreview } from "@/components/preview/number-input-preview"
@@ -73,6 +74,7 @@ export const PREVIEWS: Record<string, ComponentType> = {
   input: InputPreview,
   "json-viewer": JsonViewerPreview,
   label: LabelPreview,
+  "masked-input": MaskedInputPreview,
   "mention-textarea": MentionTextareaPreview,
   "multi-select": MultiSelectPreview,
   "number-input": NumberInputPreview,

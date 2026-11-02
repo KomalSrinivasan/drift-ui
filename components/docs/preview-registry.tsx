@@ -51,6 +51,7 @@ import { TimelinePreview } from "@/components/preview/timeline-preview"
 import { TourPreview } from "@/components/preview/tour-preview"
 import { TransferListPreview } from "@/components/preview/transfer-list-preview"
 import { TreeViewPreview } from "@/components/preview/tree-view-preview"
+import { UptimeBarPreview } from "@/components/preview/uptime-bar-preview"
 import { VirtualListPreview } from "@/components/preview/virtual-list-preview"
 
 export const PREVIEWS: Record<string, ComponentType> = {
@@ -94,6 +95,7 @@ export const PREVIEWS: Record<string, ComponentType> = {
   tour: TourPreview,
   "transfer-list": TransferListPreview,
   "tree-view": TreeViewPreview,
+  "uptime-bar": UptimeBarPreview,
   "virtual-list": VirtualListPreview,
 }
 

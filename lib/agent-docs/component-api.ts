@@ -2000,6 +2000,88 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       ],
     },
   ],
+  "uptime-bar": [
+    {
+      name: "UptimeBar",
+      description:
+        "Daily service health segments with uptime percentage, accessible labels and popover details. Keyboard navigation with Arrow keys, Home, and End.",
+      props: [
+        {
+          name: "days",
+          type: "UptimeDay[]",
+          required: true,
+          description: "List of daily status records.",
+        },
+        {
+          name: "title",
+          type: "ReactNode",
+          description: "Service name or header title.",
+        },
+        {
+          name: "showPercentage",
+          type: "boolean",
+          default: "true",
+          description: "Whether to render the calculated uptime percentage.",
+        },
+        {
+          name: "showRangeLabels",
+          type: "boolean",
+          default: "true",
+          description: "Whether to render date range start and end labels.",
+        },
+        {
+          name: "startLabel",
+          type: "ReactNode",
+          description: "Custom label for the start of the date range.",
+        },
+        {
+          name: "endLabel",
+          type: "ReactNode",
+          default: '"Today"',
+          description: "Custom label for the end of the date range.",
+        },
+        {
+          name: "degradedWeight",
+          type: "number",
+          default: "0.5",
+          description:
+            "Weight given to degraded days when calculating uptime (0 to 1).",
+        },
+        {
+          name: "decimals",
+          type: "number",
+          default: "2",
+          description: "Number of decimal places in the uptime percentage.",
+        },
+        STATE_PROPS.value("number | null", "open day popover index"),
+        STATE_PROPS.defaultValue("number | null", "null"),
+        STATE_PROPS.onValueChange(
+          "number | null",
+          "the open day popover index changes"
+        ),
+        {
+          name: "renderDayContent",
+          type: "(day: UptimeDay, index: number) => ReactNode",
+          description: "Custom renderer for the popover content.",
+        },
+      ],
+      rest: "<div>",
+    },
+    {
+      name: "UptimeBarLegend",
+      description:
+        "Status legend showing dot indicators and labels for uptime states.",
+      props: [
+        {
+          name: "statuses",
+          type: "UptimeStatus[]",
+          default: '["operational", "degraded", "down", "no-data"]',
+          description: "Status keys to display in the legend.",
+        },
+      ],
+      rest: "<div>",
+    },
+  ],
   "virtual-list": [
     {
       name: "VirtualList",

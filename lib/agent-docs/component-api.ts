@@ -2061,7 +2061,7 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
     {
       name: "TreeView",
       description:
-        "A WAI-ARIA tree. Arrow keys move and expand, Home and End jump, Enter or Space selects, and typing jumps to the next matching node. Always pass aria-label.",
+        "A WAI-ARIA tree. Arrow keys move and expand, Home and End jump, Enter or Space selects, and typing jumps to the next matching node. Always pass aria-label. Without virtual, every open row is in the DOM: 1,000 rows take about 26 ms per arrow key and 10,000 take about 600 ms (Chrome, Apple M4, dev build). With virtual, 100,000 open rows expand in about 17 ms and scroll and move in under 10 ms. Browsers cap a scroll area near 16.7 million pixels, so past about 520,000 open rows the end of a virtual tree cannot be reached.",
       props: [
         {
           name: "items",
@@ -2087,20 +2087,42 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
             "Called when a branch opens or closes. Load lazy children here.",
         },
         {
+          name: "loadChildren",
+          type: "(node: TreeNode) => Promise<unknown>",
+          description:
+            "Runs when a branch with isBranch and no children opens. Add the children to items before the promise resolves. A rejection shows a Retry row; ArrowRight on the branch retries too.",
+        },
+        {
+          name: "multiple",
+          type: "boolean",
+          default: "false",
+          description:
+            "Checkbox selection. Rows get aria-checked, branches show mixed when partly checked, and selected becomes string[].",
+        },
+        {
           name: "selected",
-          type: "string | null",
-          description: "Controlled id of the selected node.",
+          type: "string | null | string[]",
+          description:
+            "Controlled id of the selected node, or every checked id when multiple. A checked branch also checks children that load later.",
         },
         {
           name: "defaultSelected",
-          type: "string | null",
-          default: "null",
-          description: "Initially selected node when uncontrolled.",
+          type: "string | null | string[]",
+          default: "null or []",
+          description: "Initial selection when uncontrolled.",
         },
         {
           name: "onSelectedChange",
-          type: "(id: string) => void",
-          description: "Called when a node is selected.",
+          type: "(id: string) => void | (ids: string[]) => void",
+          description:
+            "Called with the selected id, or with every checked id when multiple.",
+        },
+        {
+          name: "virtual",
+          type: "boolean",
+          default: "false",
+          description:
+            "Render only the rows in view, at a fixed 32px each. The tree becomes the scroll container, so give it a height through className. Focus stays on a row after it scrolls away.",
         },
       ],
       rest: "<ul>",
@@ -2108,7 +2130,7 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
     {
       name: "TreeNode",
       description:
-        "One node. A node with isBranch and no children shows a loading row while open, so you can fetch its children in onExpandedChange.",
+        "One node. A node with isBranch and no children shows a loading row while open; pass loadChildren to fetch them.",
       props: [
         {
           name: "id",

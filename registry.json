@@ -801,13 +801,21 @@
       "name": "tree-view",
       "type": "registry:ui",
       "title": "Tree View",
-      "description": "An ARIA tree with arrow keys, typeahead, selection and lazy children.",
+      "description": "An ARIA tree with arrow keys, typeahead, single or checkbox selection, lazy children with retry, and virtualized rows.",
       "dependencies": ["lucide-react"],
-      "registryDependencies": ["utils"],
+      "registryDependencies": ["utils", "@drift-ui/use-controllable-state"],
       "files": [
         {
           "path": "registry/default/ui/tree-view.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/default/lib/tree-view.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/default/lib/virtual-list.ts",
+          "type": "registry:lib"
         }
       ]
     },

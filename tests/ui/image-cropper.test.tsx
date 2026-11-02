@@ -232,6 +232,136 @@ describe("ImageCropper", () => {
     expect(onCropError).toHaveBeenCalledWith(expect.any(Error))
   })
 
+  it("leaves browser shortcuts alone when a modifier key is held", () => {
+    const onZoomChange = vi.fn()
+    const onRotationChange = vi.fn()
+    render(
+      <ImageCropper
+        src={sampleSrc}
+        defaultZoom={1.5}
+        onZoomChange={onZoomChange}
+        onRotationChange={onRotationChange}
+      />
+    )
+
+    const region = screen.getByRole("region", { name: "Image cropper" })
+    const reload = fireEvent.keyDown(region, { key: "r", metaKey: true })
+    const zoomOut = fireEvent.keyDown(region, { key: "-", ctrlKey: true })
+
+    expect(reload).toBe(true)
+    expect(zoomOut).toBe(true)
+    expect(onRotationChange).not.toHaveBeenCalled()
+    expect(onZoomChange).not.toHaveBeenCalled()
+  })
+
+  it("scales wheel zoom with the delta and scrolls the page at the limit", () => {
+    const onZoomChange = vi.fn()
+    render(<ImageCropper src={sampleSrc} onZoomChange={onZoomChange} />)
+
+    const region = screen.getByRole("region", { name: "Image cropper" })
+
+    expect(fireEvent.wheel(region, { deltaY: 100 })).toBe(true)
+    expect(onZoomChange).not.toHaveBeenCalled()
+
+    expect(fireEvent.wheel(region, { deltaY: -10 })).toBe(false)
+    expect(onZoomChange).toHaveBeenLastCalledWith(1.02)
+  })
+
+  it("keeps the framed point centered while zooming", () => {
+    const onCropChange = vi.fn()
+    render(
+      <ImageCropper
+        src={sampleSrc}
+        defaultZoom={2}
+        defaultCrop={{ x: 40, y: 0 }}
+        onCropChange={onCropChange}
+      />
+    )
+
+    const slider = screen.getByRole("slider", { name: "Zoom level" })
+    fireEvent.change(slider, { target: { value: "3" } })
+
+    expect(onCropChange).toHaveBeenLastCalledWith({ x: 60, y: 0 })
+  })
+
+  it("hides the image until it loads and enables Apply afterwards", () => {
+    render(<ImageCropper src={sampleSrc} />)
+
+    const img = screen.getByAltText("Source preview")
+    const applyButton = screen.getByRole("button", { name: "Apply" })
+    expect(img).toHaveClass("invisible")
+    expect(applyButton).toBeDisabled()
+
+    Object.defineProperty(img, "naturalWidth", {
+      value: 200,
+      configurable: true,
+    })
+    Object.defineProperty(img, "naturalHeight", {
+      value: 200,
+      configurable: true,
+    })
+    fireEvent.load(img)
+
+    expect(img).not.toHaveClass("invisible")
+    expect(applyButton).toBeEnabled()
+  })
+
+  it("keeps proportions for an image that loaded before hydration", () => {
+    const proto = HTMLImageElement.prototype
+    const complete = vi.spyOn(proto, "complete", "get").mockReturnValue(true)
+    const width = vi.spyOn(proto, "naturalWidth", "get").mockReturnValue(600)
+    const height = vi.spyOn(proto, "naturalHeight", "get").mockReturnValue(900)
+
+    render(<ImageCropper src={sampleSrc} aspect={4 / 3} />)
+
+    const img = screen.getByAltText("Source preview")
+    expect(img).not.toHaveClass("invisible")
+    expect(
+      parseFloat(img.style.height) / parseFloat(img.style.width)
+    ).toBeCloseTo(1.5, 1)
+
+    complete.mockRestore()
+    width.mockRestore()
+    height.mockRestore()
+  })
+
+  it("shows a message when the image fails to load", () => {
+    render(<ImageCropper src="invalid-url" />)
+
+    fireEvent.error(screen.getByAltText("Source preview"))
+
+    expect(screen.getByText("Couldn't load this image")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled()
+  })
+
+  it("restores the default zoom, rotation and crop on reset", async () => {
+    const user = userEvent.setup()
+    const onZoomChange = vi.fn()
+    const onRotationChange = vi.fn()
+    const onCropChange = vi.fn()
+    render(
+      <ImageCropper
+        src={sampleSrc}
+        defaultZoom={2}
+        defaultRotation={90}
+        defaultCrop={{ x: 10, y: 0 }}
+        onZoomChange={onZoomChange}
+        onRotationChange={onRotationChange}
+        onCropChange={onCropChange}
+      />
+    )
+
+    fireEvent.change(screen.getByRole("slider", { name: "Zoom level" }), {
+      target: { value: "3" },
+    })
+    await user.click(screen.getByRole("button", { name: "Rotate clockwise" }))
+    await user.click(screen.getByRole("button", { name: "Reset crop" }))
+
+    expect(onZoomChange).toHaveBeenLastCalledWith(2)
+    expect(onRotationChange).toHaveBeenLastCalledWith(90)
+    expect(onCropChange).toHaveBeenLastCalledWith({ x: 10, y: 0 })
+  })
+
   it("disables interaction when disabled is true", () => {
     render(<ImageCropper src={sampleSrc} disabled />)
 

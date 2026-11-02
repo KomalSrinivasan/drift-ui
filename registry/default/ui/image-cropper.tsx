@@ -3,8 +3,10 @@
 import * as React from "react"
 import {
   CheckIcon,
+  ImageOffIcon,
   RotateCcwIcon,
   RotateCwIcon,
+  Undo2Icon,
   ZoomInIcon,
   ZoomOutIcon,
 } from "lucide-react"
@@ -90,7 +92,7 @@ function ImageCropper({
     onChange: onRotationChange,
   })
 
-  const { value: crop, setValue: setCrop } = useControllableState({
+  const { value: requestedCrop, setValue: setCrop } = useControllableState({
     value: controlledCrop,
     defaultValue: defaultCrop,
     onChange: onCropChange,
@@ -111,6 +113,10 @@ function ImageCropper({
   const [isDragging, setIsDragging] = React.useState(false)
   const [statusAnnouncement, setStatusAnnouncement] = React.useState("")
   const [objectUrl, setObjectUrl] = React.useState<string | null>(null)
+  const [settledImage, setSettledImage] = React.useState<{
+    src: string
+    status: "loaded" | "error"
+  } | null>(null)
 
   const activePointers = React.useRef<Map<number, Point>>(new Map())
   const pinchStart = React.useRef<{ distance: number; zoom: number } | null>(
@@ -138,6 +144,17 @@ function ImageCropper({
   }, [src])
 
   const imageSrc = typeof src === "string" ? src : (objectUrl ?? "")
+  const imageStatus =
+    settledImage?.src === imageSrc ? settledImage.status : "loading"
+
+  React.useEffect(
+    function replayImageEventMissedBeforeHydration() {
+      const img = imageRef.current
+      if (!img?.complete) return
+      img.dispatchEvent(new Event(img.naturalWidth > 0 ? "load" : "error"))
+    },
+    [imageSrc]
+  )
 
   React.useEffect(() => {
     const el = containerRef.current
@@ -167,13 +184,22 @@ function ImageCropper({
     return computeInitialRenderSize(naturalSize, cropSize, rotation)
   }, [naturalSize, cropSize, rotation])
 
+  const crop = clampCrop(
+    requestedCrop,
+    imageRenderSize,
+    cropSize,
+    zoom,
+    rotation
+  )
+
   const updateZoom = React.useCallback(
     (targetZoom: number) => {
       const clampedZoom = Math.min(maxZoom, Math.max(minZoom, targetZoom))
-      const roundedZoom = Number(clampedZoom.toFixed(2))
+      const roundedZoom = Number(clampedZoom.toFixed(3))
+      const zoomRatio = roundedZoom / zoom
       setZoom(roundedZoom)
       const nextCrop = clampCrop(
-        crop,
+        { x: crop.x * zoomRatio, y: crop.y * zoomRatio },
         imageRenderSize,
         cropSize,
         roundedZoom,
@@ -185,6 +211,7 @@ function ImageCropper({
     [
       maxZoom,
       minZoom,
+      zoom,
       crop,
       imageRenderSize,
       cropSize,
@@ -195,13 +222,7 @@ function ImageCropper({
   )
 
   const commitCrop = React.useCallback(async () => {
-    if (
-      naturalSize.width <= 0 ||
-      naturalSize.height <= 0 ||
-      !imageRef.current
-    ) {
-      return
-    }
+    if (imageStatus !== "loaded" || !imageRef.current) return
 
     const pixelCrop = computePixelCrop(
       crop,
@@ -226,6 +247,7 @@ function ImageCropper({
       onCropError?.(err instanceof Error ? err : new Error(String(err)))
     }
   }, [
+    imageStatus,
     crop,
     imageRenderSize,
     cropSize,
@@ -244,9 +266,12 @@ function ImageCropper({
       width: img.naturalWidth || img.width,
       height: img.naturalHeight || img.height,
     })
+    setSettledImage({ src: imageSrc, status: "loaded" })
   }
 
   function handleImageError() {
+    setSettledImage({ src: imageSrc, status: "error" })
+    setStatusAnnouncement("Image failed to load")
     onCropError?.(new Error("Failed to load image source"))
   }
 
@@ -265,7 +290,6 @@ function ImageCropper({
         crop: { ...crop },
       }
     } else if (activePointers.current.size === 2) {
-      setIsDragging(false)
       const pts = Array.from(activePointers.current.values())
       const distance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
       pinchStart.current = { distance, zoom }
@@ -333,17 +357,22 @@ function ImageCropper({
     if (!el || disabled) return
 
     const onWheel = (e: WheelEvent) => {
+      const isPinch = e.ctrlKey
+      const atZoomLimit = e.deltaY > 0 ? zoom <= minZoom : zoom >= maxZoom
+      if (atZoomLimit && !isPinch) return
+
       e.preventDefault()
-      const step = e.deltaY < 0 ? 0.1 : -0.1
-      updateZoom(zoom + step)
+      const deltaPixels =
+        e.deltaMode === WheelEvent.DOM_DELTA_LINE ? e.deltaY * 16 : e.deltaY
+      updateZoom(zoom * Math.exp(-deltaPixels * (isPinch ? 0.01 : 0.002)))
     }
 
     el.addEventListener("wheel", onWheel, { passive: false })
     return () => el.removeEventListener("wheel", onWheel)
-  }, [disabled, zoom, updateZoom])
+  }, [disabled, zoom, minZoom, maxZoom, updateZoom])
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (disabled) return
+    if (disabled || event.metaKey || event.ctrlKey || event.altKey) return
 
     const step = event.shiftKey ? 50 : 5
     let dx = 0
@@ -407,6 +436,13 @@ function ImageCropper({
     setStatusAnnouncement(`Rotated to ${nextRotation} degrees`)
   }
 
+  function handleReset() {
+    setZoom(defaultZoom)
+    setRotation(defaultRotation)
+    setCrop(defaultCrop)
+    setStatusAnnouncement("Crop reset")
+  }
+
   return (
     <div
       data-slot="image-cropper"
@@ -437,8 +473,9 @@ function ImageCropper({
         onPointerCancel={handlePointerUp}
         onKeyDown={handleKeyDown}
         className={cn(
-          "relative flex h-72 w-full touch-none items-center justify-center overflow-hidden rounded-md bg-black/90 outline-none select-none sm:h-80",
+          "relative flex h-72 w-full touch-none items-center justify-center overflow-hidden rounded-md bg-muted outline-none select-none sm:h-80",
           isDragging ? "cursor-grabbing" : "cursor-grab",
+          imageStatus === "loading" && "motion-safe:animate-pulse",
           "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         )}
       >
@@ -457,8 +494,22 @@ function ImageCropper({
               transform: `translate(${crop.x}px, ${crop.y}px) rotate(${rotation}deg) scale(${zoom})`,
               transformOrigin: "center center",
             }}
-            className="pointer-events-none max-h-none max-w-none transition-transform duration-75 ease-out"
+            className={cn(
+              "pointer-events-none max-h-none max-w-none",
+              !isDragging && "transition-transform duration-75 ease-out",
+              imageStatus !== "loaded" && "invisible"
+            )}
           />
+        )}
+
+        {imageStatus === "error" && (
+          <div
+            data-slot="crop-error"
+            className="absolute flex flex-col items-center gap-2 text-sm text-muted-foreground"
+          >
+            <ImageOffIcon className="size-5" />
+            Couldn&apos;t load this image
+          </div>
         )}
 
         <div
@@ -466,23 +517,25 @@ function ImageCropper({
           style={{
             width: cropSize.width,
             height: cropSize.height,
-            boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.65)",
+            boxShadow:
+              "0 0 0 9999px color-mix(in oklab, var(--background) 70%, transparent)",
           }}
           className={cn(
-            "pointer-events-none absolute border border-white/80 transition-all",
-            cropShape === "round" ? "rounded-full" : "rounded-xs"
+            "pointer-events-none absolute border border-foreground/80 transition-all",
+            cropShape === "round" ? "rounded-full" : "rounded-xs",
+            imageStatus !== "loaded" && "invisible"
           )}
         >
           {showGrid && cropShape === "rect" && (
             <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
-              <div className="border-r border-b border-white/30" />
-              <div className="border-r border-b border-white/30" />
-              <div className="border-b border-white/30" />
-              <div className="border-r border-b border-white/30" />
-              <div className="border-r border-b border-white/30" />
-              <div className="border-b border-white/30" />
-              <div className="border-r border-b border-white/30" />
-              <div className="border-r border-b border-white/30" />
+              <div className="border-r border-b border-foreground/30" />
+              <div className="border-r border-b border-foreground/30" />
+              <div className="border-b border-foreground/30" />
+              <div className="border-r border-b border-foreground/30" />
+              <div className="border-r border-b border-foreground/30" />
+              <div className="border-b border-foreground/30" />
+              <div className="border-r border-b border-foreground/30" />
+              <div className="border-r border-b border-foreground/30" />
               <div />
             </div>
           )}
@@ -490,11 +543,8 @@ function ImageCropper({
       </div>
 
       {showControls && (
-        <div
-          data-slot="crop-controls"
-          className="flex flex-wrap items-center justify-between gap-3 pt-1"
-        >
-          <div className="flex min-w-44 flex-1 items-center gap-2">
+        <div data-slot="crop-controls" className="flex flex-col gap-3 pt-1">
+          <div className="flex items-center gap-2">
             <ZoomOutIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               type="range"
@@ -505,7 +555,7 @@ function ImageCropper({
               aria-valuetext={`${Math.round(zoom * 100)}%`}
               min={minZoom}
               max={maxZoom}
-              step={0.05}
+              step={0.01}
               disabled={disabled}
               value={zoom}
               onChange={(e) => updateZoom(parseFloat(e.target.value))}
@@ -518,6 +568,17 @@ function ImageCropper({
           </div>
 
           <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              disabled={disabled}
+              onClick={handleReset}
+              aria-label="Reset crop"
+              title="Reset crop"
+            >
+              <Undo2Icon className="h-4 w-4" />
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -543,9 +604,9 @@ function ImageCropper({
             <Button
               type="button"
               size="sm"
-              disabled={disabled}
+              disabled={disabled || imageStatus !== "loaded"}
               onClick={() => commitCrop()}
-              className="gap-1.5"
+              className="ml-auto gap-1.5"
             >
               <CheckIcon className="h-4 w-4" />
               Apply

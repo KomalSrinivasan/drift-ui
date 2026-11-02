@@ -8,7 +8,7 @@ export function ImageCropperBannerPreview() {
   return (
     <div className="w-full max-w-md">
       <ImageCropper
-        src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1000&auto=format&fit=crop&q=80"
+        src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1200&auto=format&fit=crop&q=80"
         aspect={16 / 9}
         aria-label="Cover banner cropper"
       />

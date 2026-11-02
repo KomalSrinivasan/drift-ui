@@ -272,7 +272,7 @@ export function IssueFilters({ issues }: { issues: { status: string; title: stri
   },
   "image-cropper": {
     notes:
-      "Interactive image crop component for avatars and covers. Supports pointer drag-to-pan, 2-finger pinch zoom, mouse wheel / slider zoom, 90-degree step rotation, rule-of-thirds grid, and fixed aspect ratios (1 for square, 16/9 for banner, 4/3 for photo). cropShape can be 'rect' or 'round'. Emits a cropped Blob and pixel crop coordinates through onCropComplete(blob, pixelCrop) when user clicks Apply or presses Enter. Reports load or canvas errors via onCropError(error). Full keyboard support with Arrow keys to pan (Shift for 10x larger steps), + / - or [ / ] to zoom, R to rotate, and Enter to apply crop.",
+      "Interactive image crop component for avatars and covers. Supports pointer drag-to-pan, 2-finger pinch zoom, mouse wheel / slider zoom, 90-degree step rotation, rule-of-thirds grid, and fixed aspect ratios (1 for square, 16/9 for banner, 4/3 for photo). cropShape can be 'rect' or 'round'. Emits a cropped Blob and pixel crop coordinates through onCropComplete(blob, pixelCrop) when user clicks Apply or presses Enter. Shows a pulsing stage while the image loads and a message if it fails, keeps Apply disabled until it has loaded, and reports load or canvas errors via onCropError(error). The Reset button restores defaultZoom, defaultRotation and defaultCrop. Wheel and trackpad pinch zoom scale with the scroll delta, and the wheel falls through to page scroll at the zoom limits. Full keyboard support with Arrow keys to pan (Shift for 10x larger steps), + / - or [ / ] to zoom, R to rotate, and Enter to apply crop.",
     example: `"use client"
 
 import { useState } from "react"
@@ -283,7 +283,7 @@ export function AvatarUpload() {
 
   return (
     <ImageCropper
-      src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800"
+      src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200"
       aspect={1}
       cropShape="round"
       onCropComplete={(croppedBlob) => setBlob(croppedBlob)}

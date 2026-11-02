@@ -185,6 +185,48 @@ describe("toggleGroupGrants", () => {
     const updated = toggleGroupGrants(initial, "editor", SAMPLE_GROUP, ROLES)
     expect(updated.editor).toEqual(["other.perm"])
   })
+
+  it("does not modify grants for disabled actions in group", () => {
+    const groupWithDisabled: PermissionGroup = {
+      id: "docs",
+      name: "Documents",
+      permissions: [
+        { id: "docs.read", name: "Read" },
+        { id: "docs.write", name: "Write", disabled: true },
+      ],
+    }
+    const initial = { editor: ["docs.write"] }
+    // Unchecked -> grant enabled only
+    const granted = toggleGroupGrants(
+      initial,
+      "editor",
+      groupWithDisabled,
+      ROLES
+    )
+    expect(granted.editor).toEqual(["docs.write", "docs.read"])
+
+    // Checked -> ungrant enabled only
+    const ungranted = toggleGroupGrants(
+      { editor: ["docs.read", "docs.write"] },
+      "editor",
+      groupWithDisabled,
+      ROLES
+    )
+    expect(ungranted.editor).toEqual(["docs.write"])
+  })
+
+  it("does not pin already inherited permissions when granting an indeterminate group", () => {
+    // editor inherits from viewer
+    // viewer has docs.read; group has docs.read and docs.write
+    const initial = {
+      viewer: ["docs.read"],
+      editor: [],
+    }
+    const updated = toggleGroupGrants(initial, "editor", SAMPLE_GROUP, ROLES)
+    // Only docs.write and docs.delete should be added as direct grants to editor
+    expect(updated.editor).toEqual(["docs.write", "docs.delete"])
+    expect(updated.viewer).toEqual(["docs.read"])
+  })
 })
 
 describe("toggleAllGrants", () => {
@@ -201,6 +243,21 @@ describe("toggleAllGrants", () => {
   it("clears all when all are already granted", () => {
     const updated = toggleAllGrants({ r1: ["a1", "a2"] }, "r1", actions)
     expect(updated.r1).toEqual([])
+  })
+
+  it("determines completeness correctly with stale or unrelated IDs", () => {
+    // ['a1', 'legacy'] has length 2 === actions.length, but a2 is not granted
+    const updated = toggleAllGrants({ r1: ["a1", "legacy"] }, "r1", actions)
+    expect(updated.r1).toEqual(["a1", "legacy", "a2"])
+  })
+
+  it("skips disabled actions when granting all", () => {
+    const actionsWithDisabled: PermissionAction[] = [
+      { id: "a1", name: "Action 1" },
+      { id: "a2", name: "Action 2", disabled: true },
+    ]
+    const updated = toggleAllGrants({ r1: [] }, "r1", actionsWithDisabled)
+    expect(updated.r1).toEqual(["a1"])
   })
 })
 

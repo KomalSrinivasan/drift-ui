@@ -174,7 +174,9 @@ export function toggleGroupGrants(
 ): PermissionGrants {
   const status = getGroupStatus(roleId, group, grants, roles, inheritanceMap)
   const currentDirect = grants[roleId] ?? []
-  const groupActionIds = group.permissions.map((p) => p.id)
+  const groupActionIds = group.permissions
+    .filter((p) => !p.disabled)
+    .map((p) => p.id)
 
   if (status === "checked") {
     // Ungrant all permissions in this group
@@ -186,7 +188,11 @@ export function toggleGroupGrants(
   }
 
   // Grant all permissions in this group
-  const toAdd = groupActionIds.filter((id) => !currentDirect.includes(id))
+  const toAdd = groupActionIds.filter(
+    (id) =>
+      !currentDirect.includes(id) &&
+      !getPermissionStatus(roleId, id, grants, roles, inheritanceMap).granted
+  )
   return {
     ...grants,
     [roleId]: [...currentDirect, ...toAdd],
@@ -203,8 +209,9 @@ export function toggleAllGrants(
   shouldGrant?: boolean
 ): PermissionGrants {
   const current = grants[roleId] ?? []
-  const allIds = allPermissions.map((p) => p.id)
-  const grant = shouldGrant ?? current.length < allIds.length
+  const enabledPermissions = allPermissions.filter((p) => !p.disabled)
+  const allIds = enabledPermissions.map((p) => p.id)
+  const grant = shouldGrant ?? !allIds.every((id) => current.includes(id))
 
   return {
     ...grants,

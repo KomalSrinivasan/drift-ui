@@ -2,95 +2,119 @@
 
 import * as React from "react"
 import { CalendarIcon } from "lucide-react"
-import type { DateRange } from "react-day-picker"
+import type { DateRange, Matcher } from "react-day-picker"
 
+import {
+  formatRange,
+  hourCycleOf,
+  isRangeAllowed,
+  isSameRange,
+  monthToShow,
+  pickDays,
+  setRangeTime,
+  timeOf,
+  timeZoneLabel,
+  type DateTimeRange,
+  type DateTimeRangePreset,
+  type RangeEdge,
+} from "@/registry/default/lib/date-time-range"
 import { cn } from "@/registry/default/lib/utils"
+import { useControllableState } from "@/registry/default/hooks/use-controllable-state"
 import { Button, buttonVariants } from "@/registry/default/ui/button"
 import { Calendar } from "@/registry/default/ui/calendar"
-import { Input } from "@/registry/default/ui/input"
-import { Label } from "@/registry/default/ui/label"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/registry/default/ui/popover"
-
-type DateTimeRange = {
-  from?: Date
-  to?: Date
-}
+import { TimeField } from "@/registry/default/ui/time-field"
 
 const DEFAULT_START_TIME = "09:00"
 const DEFAULT_END_TIME = "17:00"
+const EMPTY_RANGE: DateTimeRange = {}
+const NO_PRESETS: DateTimeRangePreset[] = []
 
-function timeOf(date: Date | undefined, fallback: string) {
-  if (!date) return fallback
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
-}
-
-function withTime(date: Date | undefined, time: string) {
-  if (!date) return undefined
-  const [hours = 0, minutes = 0] = time.split(":").map(Number)
-  const next = new Date(date)
-  next.setHours(hours, minutes, 0, 0)
-  return next
-}
-
-function formatRange(range: DateTimeRange, locale?: string) {
-  const formatter = new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  })
-  if (range.from && range.to) return formatter.formatRange(range.from, range.to)
-  if (range.from) return formatter.format(range.from)
-  return null
+function subscribeToNothing() {
+  return () => {}
 }
 
 function DateTimeRangePicker({
   value,
-  defaultValue = {},
+  defaultValue = EMPTY_RANGE,
   onValueChange,
+  presets = NO_PRESETS,
+  min,
+  max,
   locale,
   placeholder = "Pick a date range",
   numberOfMonths = 2,
   disabled,
   className,
-  id,
-}: {
+  ...props
+}: Omit<
+  React.ComponentProps<"button">,
+  "value" | "defaultValue" | "onChange" | "children" | "type"
+> & {
   value?: DateTimeRange
   defaultValue?: DateTimeRange
   onValueChange?: (range: DateTimeRange) => void
+  presets?: DateTimeRangePreset[]
+  min?: Date
+  max?: Date
   locale?: string
   placeholder?: string
   numberOfMonths?: number
-  disabled?: boolean
-  className?: string
-  id?: string
 }) {
-  const [uncontrolledRange, setUncontrolledRange] = React.useState(defaultValue)
+  const { value: range, setValue: setRange } = useControllableState({
+    value,
+    defaultValue,
+    onChange: onValueChange,
+  })
+  const bounds = { min, max }
   const [isOpen, setIsOpen] = React.useState(false)
-  const range = value ?? uncontrolledRange
+  const [month, setMonth] = React.useState(() => monthToShow(range, bounds))
   const startTime = timeOf(range.from, DEFAULT_START_TIME)
   const endTime = timeOf(range.to, DEFAULT_END_TIME)
   const label = formatRange(range, locale)
-  const timeFieldId = React.useId()
+  const isHydrated = React.useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false
+  )
+  const triggerText = !label ? placeholder : isHydrated ? label : ""
+  const hourCycle = hourCycleOf(locale)
+  const fieldId = React.useId()
+  const disabledDays: Matcher[] = [
+    ...(min ? [{ before: min }] : []),
+    ...(max ? [{ after: max }] : []),
+  ]
 
-  function updateRange(next: DateTimeRange) {
-    if (value === undefined) setUncontrolledRange(next)
-    onValueChange?.(next)
+  function handleOpenChange(open: boolean) {
+    if (open) setMonth(monthToShow(range, bounds))
+    setIsOpen(open)
   }
 
   function selectDays(days: DateRange | undefined) {
-    updateRange({
-      from: withTime(days?.from, startTime),
-      to: withTime(days?.to, endTime),
-    })
+    setRange(pickDays(days, { start: startTime, end: endTime }, bounds))
   }
 
+  function applyPreset(preset: DateTimeRangePreset) {
+    setRange(preset.value)
+    setMonth(monthToShow(preset.value, bounds))
+  }
+
+  function editTime(edge: RangeEdge, time: string) {
+    setRange(setRangeTime(range, edge, time, bounds))
+  }
+
+  const timeFields = [
+    { edge: "from", label: "Start time", time: startTime },
+    { edge: "to", label: "End time", time: endTime },
+  ] as const
+
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger
-        id={id}
         disabled={disabled}
         data-slot="date-time-range"
         data-empty={label ? undefined : ""}
@@ -99,61 +123,97 @@ function DateTimeRangePicker({
           "w-full max-w-sm justify-start font-normal data-[empty]:text-muted-foreground",
           className
         )}
+        {...props}
       >
         <CalendarIcon />
-        <span className="truncate">{label ?? placeholder}</span>
+        <span className="truncate">{triggerText}</span>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
-        <Calendar
-          mode="range"
-          numberOfMonths={numberOfMonths}
-          defaultMonth={range.from}
-          selected={{ from: range.from, to: range.to }}
-          onSelect={selectDays}
-        />
-        <div className="grid grid-cols-2 gap-3 border-t p-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor={`${timeFieldId}-start`}>Start time</Label>
-            <Input
-              id={`${timeFieldId}-start`}
-              type="time"
-              value={startTime}
-              disabled={!range.from}
-              onChange={(event) =>
-                updateRange({
-                  ...range,
-                  from: withTime(range.from, event.target.value),
-                })
-              }
-            />
+      <PopoverContent
+        align="start"
+        className="flex w-auto max-w-[calc(100vw-1rem)] flex-col p-0 sm:flex-row"
+      >
+        {presets.length > 0 && (
+          <div
+            role="group"
+            aria-label="Presets"
+            className="flex flex-wrap gap-1 border-b p-3 sm:w-40 sm:flex-col sm:flex-nowrap sm:border-r sm:border-b-0"
+          >
+            {presets.map((preset) => (
+              <Button
+                key={preset.label}
+                variant="ghost"
+                size="sm"
+                className="justify-start aria-pressed:bg-accent aria-pressed:text-accent-foreground"
+                aria-pressed={isSameRange(range, preset.value)}
+                disabled={!isRangeAllowed(preset.value, bounds)}
+                onClick={() => applyPreset(preset)}
+              >
+                {preset.label}
+              </Button>
+            ))}
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor={`${timeFieldId}-end`}>End time</Label>
-            <Input
-              id={`${timeFieldId}-end`}
-              type="time"
-              value={endTime}
-              disabled={!range.to}
-              onChange={(event) =>
-                updateRange({
-                  ...range,
-                  to: withTime(range.to, event.target.value),
-                })
-              }
-            />
+        )}
+        <div className="flex flex-col">
+          <Calendar
+            mode="range"
+            autoFocus
+            numberOfMonths={numberOfMonths}
+            month={month}
+            onMonthChange={setMonth}
+            startMonth={min}
+            endMonth={max}
+            disabled={disabledDays}
+            selected={{ from: range.from, to: range.to }}
+            onSelect={selectDays}
+          />
+          <div className="grid grid-cols-2 gap-3 border-t p-3">
+            {timeFields.map((field) => {
+              const date = range[field.edge]
+              const labelId = `${fieldId}-${field.edge}-label`
+              const zoneId = `${fieldId}-${field.edge}-zone`
+
+              return (
+                <div key={field.edge} className="grid gap-1.5">
+                  <span id={labelId} className="text-sm font-medium">
+                    {field.label}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <TimeField
+                      aria-labelledby={labelId}
+                      aria-describedby={zoneId}
+                      value={field.time}
+                      onValueChange={(time) => editTime(field.edge, time)}
+                      hourCycle={hourCycle}
+                      disabled={!date}
+                      aria-disabled={!date || undefined}
+                    />
+                    <span
+                      id={zoneId}
+                      data-slot="date-time-range-zone"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {timeZoneLabel(
+                        date ?? monthToShow(range, bounds),
+                        locale
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        </div>
-        <div className="flex justify-between gap-2 border-t p-3">
-          <Button variant="ghost" size="sm" onClick={() => updateRange({})}>
-            Clear
-          </Button>
-          <Button size="sm" onClick={() => setIsOpen(false)}>
-            Done
-          </Button>
+          <div className="flex justify-between gap-2 border-t p-3">
+            <Button variant="ghost" size="sm" onClick={() => setRange({})}>
+              Clear
+            </Button>
+            <Button size="sm" onClick={() => setIsOpen(false)}>
+              Done
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
   )
 }
 
-export { DateTimeRangePicker, type DateTimeRange }
+export { DateTimeRangePicker, type DateTimeRange, type DateTimeRangePreset }

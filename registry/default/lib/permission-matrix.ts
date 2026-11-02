@@ -27,6 +27,7 @@ export interface PermissionStatus {
   direct: boolean
   inherited: boolean
   inheritedFrom?: string
+  overridden?: boolean
 }
 
 /**
@@ -79,6 +80,17 @@ export function getPermissionStatus(
   inheritanceMap?: Map<string, string[]>
 ): PermissionStatus {
   const directGrants = grants[roleId] ?? []
+  const denyId = `!${permissionId}`
+
+  if (directGrants.includes(denyId)) {
+    return {
+      granted: false,
+      direct: false,
+      inherited: false,
+      overridden: true,
+    }
+  }
+
   if (directGrants.includes(permissionId)) {
     return {
       granted: true,
@@ -142,17 +154,39 @@ export function getGroupStatus(
 
 /**
  * Toggles an individual permission grant for a role, returning an updated grants record.
+ * Supports overriding inherited permissions by adding or removing an explicit deny (!id).
  */
 export function togglePermissionGrant(
   grants: PermissionGrants,
   roleId: string,
-  permissionId: string
+  permissionId: string,
+  roles: PermissionRole[] = [],
+  inheritanceMap?: Map<string, string[]>
 ): PermissionGrants {
   const current = grants[roleId] ?? []
-  const has = current.includes(permissionId)
-  const next = has
-    ? current.filter((id) => id !== permissionId)
-    : [...current, permissionId]
+  const denyId = `!${permissionId}`
+  const status = getPermissionStatus(
+    roleId,
+    permissionId,
+    grants,
+    roles,
+    inheritanceMap
+  )
+
+  let next: string[]
+  if (current.includes(denyId)) {
+    // Explicit deny exists -> remove it to restore inherited grant or ungranted
+    next = current.filter((id) => id !== denyId)
+  } else if (status.inherited) {
+    // Inherited grant -> override with explicit deny
+    next = [...current.filter((id) => id !== permissionId), denyId]
+  } else if (current.includes(permissionId)) {
+    // Direct grant -> remove
+    next = current.filter((id) => id !== permissionId)
+  } else {
+    // Ungranted -> add grant
+    next = [...current.filter((id) => id !== denyId), permissionId]
+  }
 
   return {
     ...grants,
@@ -162,7 +196,7 @@ export function togglePermissionGrant(
 
 /**
  * Toggles all permissions in a group for a role.
- * If currently "checked", ungrants direct permissions in the group.
+ * If currently "checked", ungrants permissions in the group (denying inherited).
  * If "unchecked" or "indeterminate", grants all ungranted permissions in the group.
  */
 export function toggleGroupGrants(
@@ -181,21 +215,43 @@ export function toggleGroupGrants(
   if (status === "checked") {
     // Ungrant all permissions in this group
     const next = currentDirect.filter((id) => !groupActionIds.includes(id))
+    for (const actionId of groupActionIds) {
+      const pStatus = getPermissionStatus(
+        roleId,
+        actionId,
+        grants,
+        roles,
+        inheritanceMap
+      )
+      if (pStatus.inherited) {
+        next.push(`!${actionId}`)
+      }
+    }
     return {
       ...grants,
       [roleId]: next,
     }
   }
 
-  // Grant all permissions in this group
-  const toAdd = groupActionIds.filter(
-    (id) =>
-      !currentDirect.includes(id) &&
-      !getPermissionStatus(roleId, id, grants, roles, inheritanceMap).granted
-  )
+  // Grant all permissions in this group: remove denies and grant ungranted
+  const denyIds = groupActionIds.map((a) => `!${a}`)
+  const next = currentDirect.filter((id) => !denyIds.includes(id))
+  for (const actionId of groupActionIds) {
+    const pStatus = getPermissionStatus(
+      roleId,
+      actionId,
+      { ...grants, [roleId]: next },
+      roles,
+      inheritanceMap
+    )
+    if (!pStatus.granted && !next.includes(actionId)) {
+      next.push(actionId)
+    }
+  }
+
   return {
     ...grants,
-    [roleId]: [...currentDirect, ...toAdd],
+    [roleId]: next,
   }
 }
 

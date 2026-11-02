@@ -163,6 +163,33 @@ describe("togglePermissionGrant", () => {
     const updated = togglePermissionGrant(initial, "editor", "docs.read")
     expect(updated.editor).toEqual(["docs.write"])
   })
+
+  it("adds explicit deny when overriding an inherited permission", () => {
+    // editor inherits docs.read from viewer
+    const initial = { viewer: ["docs.read"], editor: [] }
+    const updated = togglePermissionGrant(initial, "editor", "docs.read", ROLES)
+    expect(updated.editor).toEqual(["!docs.read"])
+    const status = getPermissionStatus("editor", "docs.read", updated, ROLES)
+    expect(status.granted).toBe(false)
+    expect(status.overridden).toBe(true)
+
+    // Toggling again removes the deny and restores inheritance
+    const restored = togglePermissionGrant(
+      updated,
+      "editor",
+      "docs.read",
+      ROLES
+    )
+    expect(restored.editor).toEqual([])
+    const restoredStatus = getPermissionStatus(
+      "editor",
+      "docs.read",
+      restored,
+      ROLES
+    )
+    expect(restoredStatus.granted).toBe(true)
+    expect(restoredStatus.inherited).toBe(true)
+  })
 })
 
 describe("toggleGroupGrants", () => {

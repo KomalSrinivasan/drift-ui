@@ -117,6 +117,16 @@ export function PermissionMatrix({
     [roles]
   )
 
+  const actionMap = React.useMemo(() => {
+    const map = new Map<string, PermissionAction>()
+    for (const group of permissions) {
+      for (const action of group.permissions) {
+        map.set(action.id, action)
+      }
+    }
+    return map
+  }, [permissions])
+
   const filteredGroups = React.useMemo(
     () => filterPermissionGroups(permissions, searchQuery),
     [permissions, searchQuery]
@@ -217,6 +227,7 @@ export function PermissionMatrix({
           if (row.type === "group") {
             handleToggleGroup(role.id, row.group)
           } else if (row.type === "action") {
+            if (row.action.disabled) return
             handleToggleAction(role.id, row.action.id)
           }
         }
@@ -226,6 +237,9 @@ export function PermissionMatrix({
 
   function handleToggleAction(roleId: string, actionId: string) {
     if (disabled || readOnly) return
+    const action = actionMap.get(actionId)
+    if (action?.disabled) return
+
     const status = getPermissionStatus(
       roleId,
       actionId,
@@ -235,7 +249,13 @@ export function PermissionMatrix({
     )
     if (status.inherited && !allowOverrideInherited) return
 
-    const next = togglePermissionGrant(grants, roleId, actionId)
+    const next = togglePermissionGrant(
+      grants,
+      roleId,
+      actionId,
+      roles,
+      inheritanceMap
+    )
     setGrants(next)
   }
 

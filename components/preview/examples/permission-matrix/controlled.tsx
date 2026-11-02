@@ -49,7 +49,13 @@ export function PermissionMatrixControlledPreview() {
     React.useState<PermissionGrants>(INITIAL_GRANTS)
   const [savedNotice, setSavedNotice] = React.useState(false)
 
-  const isDirty = JSON.stringify(grants) !== JSON.stringify(savedGrants)
+  const isDirty = Object.keys({ ...grants, ...savedGrants }).some((role) => {
+    const current = new Set(grants[role] ?? [])
+    const saved = new Set(savedGrants[role] ?? [])
+    return (
+      current.size !== saved.size || [...current].some((id) => !saved.has(id))
+    )
+  })
 
   function handleSave() {
     setSavedGrants(grants)

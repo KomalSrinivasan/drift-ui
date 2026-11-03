@@ -69,6 +69,18 @@ describe("timezone-picker logic", () => {
     ])
   })
 
+  it("renames and dedupes a restricted list", () => {
+    const options = listTimezones(WINTER, [
+      "Asia/Calcutta",
+      "Asia/Kolkata",
+      "Asia/Tokyo",
+    ])
+    expect(options.map((option) => option.value)).toEqual([
+      "Asia/Kolkata",
+      "Asia/Tokyo",
+    ])
+  })
+
   it("finds zones by city, spaced name or offset", () => {
     const options = listTimezones(WINTER)
     const values = (query: string) =>
@@ -77,6 +89,7 @@ describe("timezone-picker logic", () => {
     expect(values("tokyo")).toEqual(["Asia/Tokyo"])
     expect(values("new york")).toContain("America/New_York")
     expect(values("NEW_YORK")).toContain("America/New_York")
+    expect(values("America / New York")).toContain("America/New_York")
     expect(values("kolkata")).toEqual(["Asia/Kolkata"])
     expect(values("+5:30")).toContain("Asia/Kolkata")
     expect(values("  ")).toHaveLength(options.length)

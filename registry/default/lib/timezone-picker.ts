@@ -36,12 +36,34 @@ export function formatTimezoneLabel(timeZone: string) {
   return timeZone.replaceAll("_", " ").replaceAll("/", " / ")
 }
 
+// Building a DateTimeFormat is the slow part, so keep one per zone.
+const offsetFormatters = new Map<string, Intl.DateTimeFormat>()
+const timeFormatters = new Map<string, Intl.DateTimeFormat>()
+
+function cached(
+  cache: Map<string, Intl.DateTimeFormat>,
+  key: string,
+  create: () => Intl.DateTimeFormat
+) {
+  let formatter = cache.get(key)
+  if (!formatter) {
+    formatter = create()
+    cache.set(key, formatter)
+  }
+  return formatter
+}
+
 // Offsets move with daylight saving, so callers pass the date to read them at.
 export function getTimezoneOffset(timeZone: string, date: Date) {
-  const offset = new Intl.DateTimeFormat("en-US", {
+  const offset = cached(
+    offsetFormatters,
     timeZone,
-    timeZoneName: "shortOffset",
-  })
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        timeZoneName: "shortOffset",
+      })
+  )
     .formatToParts(date)
     .find((part) => part.type === "timeZoneName")?.value
 
@@ -60,18 +82,23 @@ export function formatTimezoneTime(
   date: Date,
   locale?: string
 ) {
-  return new Intl.DateTimeFormat(locale, {
-    timeZone,
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date)
+  return cached(
+    timeFormatters,
+    `${locale ?? ""}|${timeZone}`,
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        timeZone,
+        hour: "numeric",
+        minute: "2-digit",
+      })
+  ).format(date)
 }
 
 export function listTimezones(
   date: Date,
   ids: string[] = getTimezoneIds()
 ): TimezoneOption[] {
-  return ids
+  return [...new Set(ids.map(toCurrentTimezoneName))]
     .map((value) => {
       const offset = getTimezoneOffset(value, date)
       return {
@@ -98,6 +125,7 @@ export function filterTimezones(options: TimezoneOption[], query: string) {
   return options.filter(
     (option) =>
       normalize(option.value).includes(needle) ||
+      normalize(option.label).includes(needle) ||
       option.offset.toLowerCase().includes(needle)
   )
 }

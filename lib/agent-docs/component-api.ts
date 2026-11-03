@@ -1969,8 +1969,9 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
         {
           name: "timeZones",
           type: "string[]",
-          default: 'Intl.supportedValuesOf("timeZone")',
-          description: "Limits the list to these IANA names.",
+          default: '"every zone the browser supports"',
+          description:
+            'Limits the list to these IANA names. The default comes from Intl.supportedValuesOf("timeZone"), with UTC added if missing and old names such as Asia/Calcutta shown under current ones. Names passed here get the same renaming, and duplicates are dropped.',
         },
         {
           name: "placeholder",

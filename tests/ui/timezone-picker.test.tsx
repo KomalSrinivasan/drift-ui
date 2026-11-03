@@ -92,6 +92,24 @@ describe("TimezonePicker", () => {
     )
   })
 
+  it("selects an old name in a restricted list", async () => {
+    const user = userEvent.setup()
+    render(
+      <TimezonePicker
+        aria-label="Time zone"
+        timeZones={["Asia/Calcutta", "Asia/Tokyo"]}
+        value="Asia/Calcutta"
+      />
+    )
+
+    await openPicker(user)
+    expect(screen.getAllByRole("option")).toHaveLength(2)
+    expect(screen.getByRole("option", { name: /Kolkata/ })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+  })
+
   it("selects a zone by click", async () => {
     const user = userEvent.setup()
     render(<TimezonePicker aria-label="Time zone" timeZones={ZONES} />)

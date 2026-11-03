@@ -11,6 +11,7 @@ import {
   getTimezoneOffset,
   listTimezones,
   toCurrentTimezoneName,
+  type TimezoneOption,
 } from "@/registry/default/lib/timezone-picker"
 import { cn } from "@/registry/default/lib/utils"
 import {
@@ -52,26 +53,25 @@ function TimezonePicker({
   const [isOpen, setIsOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const [highlightedIndex, setHighlightedIndex] = React.useState(0)
-  const [now, setNow] = React.useState<Date | null>(null)
+  // Built once per open, so offsets and times match the moment it opened.
+  const [list, setList] = React.useState<{
+    now: Date
+    options: TimezoneOption[]
+  } | null>(null)
 
-  const options = React.useMemo(
-    () => (now ? listTimezones(now, timeZones) : []),
-    [now, timeZones]
-  )
-  const matches = filterTimezones(options, query)
+  const matches = filterTimezones(list?.options ?? [], query)
 
   function handleOpenChange(nextOpen: boolean) {
     setIsOpen(nextOpen)
     if (!nextOpen) return
-    const openedAt = new Date()
-    setNow(openedAt)
+    const now = new Date()
+    const options = listTimezones(now, timeZones)
+    setList({ now, options })
     setQuery("")
     setHighlightedIndex(
       Math.max(
         0,
-        listTimezones(openedAt, timeZones).findIndex(
-          (option) => option.value === current
-        )
+        options.findIndex((option) => option.value === current)
       )
     )
   }
@@ -167,7 +167,7 @@ function TimezonePicker({
               No time zone found
             </p>
           ) : (
-            now &&
+            list &&
             matches.map((option, index) => (
               <div
                 key={option.value}
@@ -184,7 +184,7 @@ function TimezonePicker({
               >
                 <span className="min-w-0 flex-1 truncate">{option.label}</span>
                 <span className="text-xs text-muted-foreground tabular-nums">
-                  {option.offset} · {formatTimezoneTime(option.value, now)}
+                  {option.offset} · {formatTimezoneTime(option.value, list.now)}
                 </span>
                 {option.value === current && (
                   <CheckIcon className="size-4 shrink-0" />

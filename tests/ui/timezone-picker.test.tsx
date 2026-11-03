@@ -13,7 +13,12 @@ function trigger() {
 
 async function openPicker(user: ReturnType<typeof userEvent.setup>) {
   await user.click(trigger())
-  return screen.findByRole("combobox", { name: "Search time zones" })
+  const search = await screen.findByRole("combobox", {
+    name: "Search time zones",
+  })
+  // Base UI moves focus into the popup a tick after it mounts.
+  await waitFor(() => expect(search).toHaveFocus())
+  return search
 }
 
 describe("TimezonePicker", () => {
@@ -108,6 +113,24 @@ describe("TimezonePicker", () => {
       "aria-selected",
       "true"
     )
+  })
+
+  it("follows a timeZones change while open", async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <TimezonePicker aria-label="Time zone" timeZones={ZONES} />
+    )
+
+    await openPicker(user)
+    expect(screen.getAllByRole("option")).toHaveLength(3)
+
+    rerender(
+      <TimezonePicker aria-label="Time zone" timeZones={["Asia/Tokyo"]} />
+    )
+    expect(screen.getAllByRole("option")).toHaveLength(1)
+    expect(
+      screen.getByRole("combobox", { name: "Search time zones" })
+    ).toHaveAttribute("aria-activedescendant", screen.getByRole("option").id)
   })
 
   it("selects a zone by click", async () => {

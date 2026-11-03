@@ -11,7 +11,6 @@ import {
   getTimezoneOffset,
   listTimezones,
   toCurrentTimezoneName,
-  type TimezoneOption,
 } from "@/registry/default/lib/timezone-picker"
 import { cn } from "@/registry/default/lib/utils"
 import {
@@ -52,28 +51,31 @@ function TimezonePicker({
   const current = toCurrentTimezoneName(value)
   const [isOpen, setIsOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
-  const [highlightedIndex, setHighlightedIndex] = React.useState(0)
-  // Built once per open, so offsets and times match the moment it opened.
-  const [list, setList] = React.useState<{
-    now: Date
-    options: TimezoneOption[]
-  } | null>(null)
+  // null means "the selected zone", resolved against the current list.
+  const [highlighted, setHighlighted] = React.useState<number | null>(null)
+  // Read once per open, so offsets and times match the moment it opened.
+  const [openedAt, setOpenedAt] = React.useState<Date | null>(null)
 
-  const matches = filterTimezones(list?.options ?? [], query)
+  const options = React.useMemo(
+    () => (openedAt ? listTimezones(openedAt, timeZones) : []),
+    [openedAt, timeZones]
+  )
+  const matches = filterTimezones(options, query)
+  const highlightedIndex = Math.min(
+    highlighted ??
+      Math.max(
+        0,
+        matches.findIndex((option) => option.value === current)
+      ),
+    Math.max(0, matches.length - 1)
+  )
 
   function handleOpenChange(nextOpen: boolean) {
     setIsOpen(nextOpen)
     if (!nextOpen) return
-    const now = new Date()
-    const options = listTimezones(now, timeZones)
-    setList({ now, options })
+    setOpenedAt(new Date())
     setQuery("")
-    setHighlightedIndex(
-      Math.max(
-        0,
-        options.findIndex((option) => option.value === current)
-      )
-    )
+    setHighlighted(null)
   }
 
   function select(next: string) {
@@ -88,7 +90,7 @@ function TimezonePicker({
         event.preventDefault()
         if (matches.length === 0) return
         const delta = event.key === "ArrowDown" ? 1 : -1
-        setHighlightedIndex(
+        setHighlighted(
           (highlightedIndex + delta + matches.length) % matches.length
         )
         return
@@ -150,7 +152,7 @@ function TimezonePicker({
           placeholder="Search time zones"
           onChange={(event) => {
             setQuery(event.target.value)
-            setHighlightedIndex(0)
+            setHighlighted(0)
           }}
           onKeyDown={handleKeyDown}
           className="h-8 w-full rounded-sm bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
@@ -167,7 +169,7 @@ function TimezonePicker({
               No time zone found
             </p>
           ) : (
-            list &&
+            openedAt &&
             matches.map((option, index) => (
               <div
                 key={option.value}
@@ -178,13 +180,13 @@ function TimezonePicker({
                 role="option"
                 aria-selected={option.value === current}
                 data-highlighted={index === highlightedIndex ? "" : undefined}
-                onPointerMove={() => setHighlightedIndex(index)}
+                onPointerMove={() => setHighlighted(index)}
                 onClick={() => select(option.value)}
                 className="flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
               >
                 <span className="min-w-0 flex-1 truncate">{option.label}</span>
                 <span className="text-xs text-muted-foreground tabular-nums">
-                  {option.offset} · {formatTimezoneTime(option.value, list.now)}
+                  {option.offset} · {formatTimezoneTime(option.value, openedAt)}
                 </span>
                 {option.value === current && (
                   <CheckIcon className="size-4 shrink-0" />

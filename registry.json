@@ -555,6 +555,28 @@
       ]
     },
     {
+      "name": "secret-field",
+      "type": "registry:ui",
+      "title": "Secret Field",
+      "description": "A read-only masked value, such as an API key, with reveal and copy buttons.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "utils",
+        "@drift-ui/use-controllable-state",
+        "@drift-ui/use-copy-to-clipboard"
+      ],
+      "files": [
+        {
+          "path": "registry/default/ui/secret-field.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/default/lib/secret-field.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "shortcut-cheatsheet",
       "type": "registry:ui",
       "title": "Shortcut Cheatsheet",

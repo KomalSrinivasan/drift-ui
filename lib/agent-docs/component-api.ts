@@ -1559,6 +1559,45 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       description: "Pure logic helpers imported from @/lib/saved-views.",
     },
   ],
+  "secret-field": [
+    {
+      name: "SecretField",
+      description:
+        "A read-only masked value with a reveal toggle and a copy button. Copy gives the full value even while it is masked. Name it with aria-label or aria-labelledby.",
+      props: [
+        {
+          name: "value",
+          type: "string",
+          required: true,
+          description: "The secret to display and copy.",
+        },
+        {
+          name: "visibleChars",
+          type: "number",
+          default: "4",
+          description:
+            "Trailing characters left visible while masked. Values this short or shorter stay fully masked.",
+        },
+        {
+          name: "revealed",
+          type: "boolean",
+          description: "Controlled reveal state.",
+        },
+        {
+          name: "defaultRevealed",
+          type: "boolean",
+          default: "false",
+          description: "Initial reveal state when uncontrolled.",
+        },
+        {
+          name: "onRevealedChange",
+          type: "(revealed: boolean) => void",
+          description: "Called when the reveal button is toggled.",
+        },
+      ],
+      rest: "<div>",
+    },
+  ],
   "shortcut-cheatsheet": [
     {
       name: "ShortcutCheatsheet",

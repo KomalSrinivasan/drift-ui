@@ -554,6 +554,15 @@ export function IssueViewSwitcher() {
   )
 }`,
   },
+  "secret-field": {
+    notes:
+      "SecretField displays a value the user cannot edit, such as an API key or webhook secret. It shows a fixed run of 8 dots plus the last visibleChars characters (default 4); values that short or shorter stay fully masked. The reveal button is a toggle with aria-pressed, and reveal state is controlled with revealed/onRevealedChange or uncontrolled with defaultRevealed. Copy always writes the full value, even while masked, and announces Copied through a status region. Name it with aria-label or aria-labelledby. For a field the user types a secret into, use password-input.",
+    example: `import { SecretField } from "@/components/ui/secret-field"
+
+export function ApiKeyRow() {
+  return <SecretField aria-label="Live API key" value="sk_live_51Mz8a1b2" visibleChars={4} />
+}`,
+  },
   "shortcut-cheatsheet": {
     notes:
       "Mount it once near the app root. Pressing trigger opens a dialog listing sections of shortcuts, with focus in a search field that matches shortcut labels and section titles. keys uses the same format as ShortcutRecorder ('Mod+K', not 'mod+k'), so recorded bindings can be passed straight into sections and render with the same platform symbols. trigger is '?' by default and also takes a shortcut string such as 'Mod+/'. It is ignored in text inputs, textareas, selects and contenteditable elements, and an empty string turns it off. Control open and onOpenChange to open it from a button or menu item, since mouse and touch users have no key to press. Closing returns focus to whatever opened it. If that element unmounts, as a menu item does, pass onCloseAutoFocus on Radix or finalFocus on Base UI to choose the target. If two cheatsheets share a page, give them different triggers. Escape closes it and clears the search. Installs dialog, input and shortcut-recorder.",

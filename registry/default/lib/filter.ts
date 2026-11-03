@@ -159,10 +159,23 @@ function parseDateBoundary(val: unknown, endOfDay = false): number | null {
       const year = Number(dateMatch[1])
       const month = Number(dateMatch[2]) - 1
       const day = Number(dateMatch[3])
-      if (endOfDay) {
-        return new Date(year, month, day, 23, 59, 59, 999).getTime()
+      const d = new Date(
+        year,
+        month,
+        day,
+        endOfDay ? 23 : 0,
+        endOfDay ? 59 : 0,
+        endOfDay ? 59 : 0,
+        endOfDay ? 999 : 0
+      )
+      if (
+        d.getFullYear() !== year ||
+        d.getMonth() !== month ||
+        d.getDate() !== day
+      ) {
+        return null
       }
-      return new Date(year, month, day, 0, 0, 0, 0).getTime()
+      return d.getTime()
     }
     const parsed = Date.parse(trimmed)
     if (!isNaN(parsed)) {
@@ -225,7 +238,7 @@ export function matchesFilter(fieldValue: unknown, filter: Filter): boolean {
         Array.isArray(filter.value) ? filter.value[0] : filter.value,
         false
       )
-      if (targetTime === null) return true
+      if (targetTime === null) return false
       return fieldTime < targetTime
     }
 
@@ -234,7 +247,7 @@ export function matchesFilter(fieldValue: unknown, filter: Filter): boolean {
         Array.isArray(filter.value) ? filter.value[0] : filter.value,
         true
       )
-      if (targetTime === null) return true
+      if (targetTime === null) return false
       return fieldTime > targetTime
     }
 
@@ -244,7 +257,7 @@ export function matchesFilter(fieldValue: unknown, filter: Filter): boolean {
         : String(filter.value).split("..")
       const fromTime = parseDateBoundary(range[0], false)
       const toTime = parseDateBoundary(range[1] ?? range[0], true)
-      if (fromTime === null || toTime === null) return true
+      if (fromTime === null || toTime === null) return false
       return fieldTime >= fromTime && fieldTime <= toTime
     }
   }
@@ -304,21 +317,29 @@ export function matchesFilter(fieldValue: unknown, filter: Filter): boolean {
   }
 }
 
+function hasAnyFilters(item: FilterItem): boolean {
+  if (isFilterGroup(item)) {
+    return item.filters.some(hasAnyFilters)
+  }
+  return true
+}
+
 export function matchesFilterGroup(
   item: Record<string, unknown>,
   group: FilterGroup
 ): boolean {
-  if (group.filters.length === 0) return true
+  const activeFilters = group.filters.filter(hasAnyFilters)
+  if (activeFilters.length === 0) return true
 
   if (group.conjunction === "or") {
-    return group.filters.some((child) =>
+    return activeFilters.some((child) =>
       isFilterGroup(child)
         ? matchesFilterGroup(item, child)
         : matchesFilter(item[child.fieldId], child)
     )
   }
 
-  return group.filters.every((child) =>
+  return activeFilters.every((child) =>
     isFilterGroup(child)
       ? matchesFilterGroup(item, child)
       : matchesFilter(item[child.fieldId], child)
@@ -335,21 +356,33 @@ export function matchesFilters(
   return filters.every((filter) => matchesFilter(item[filter.fieldId], filter))
 }
 
+function encodeDslComponent(val: string): string {
+  return encodeURIComponent(val).replace(/\(/g, "%28").replace(/\)/g, "%29")
+}
+
+function safeDecodeURIComponent(val: string): string {
+  try {
+    return decodeURIComponent(val)
+  } catch {
+    return val
+  }
+}
+
 function serializeValue(filter: Filter): string {
   if (Array.isArray(filter.value)) {
     if (filter.operator === "between") {
-      return filter.value.map(encodeURIComponent).join("..")
+      return filter.value.map(encodeDslComponent).join("..")
     }
-    return filter.value.map(encodeURIComponent).join("|")
+    return filter.value.map(encodeDslComponent).join("|")
   }
-  return encodeURIComponent(filter.value)
+  return encodeDslComponent(filter.value)
 }
 
 function serializeItem(item: FilterItem): string {
   if (isFilterGroup(item)) {
     return serializeGroup(item)
   }
-  return `${encodeURIComponent(item.fieldId)}:${item.operator}:${serializeValue(item)}`
+  return `${encodeDslComponent(item.fieldId)}:${item.operator}:${serializeValue(item)}`
 }
 
 function serializeGroup(group: FilterGroup): string {
@@ -424,25 +457,25 @@ function parseItem(itemStr: string): FilterItem | null {
   let rawValue: string
 
   if (secondColon === -1) {
-    fieldId = decodeURIComponent(trimmed.slice(0, firstColon))
+    fieldId = safeDecodeURIComponent(trimmed.slice(0, firstColon))
     operator = "is"
     rawValue = trimmed.slice(firstColon + 1)
   } else {
-    fieldId = decodeURIComponent(trimmed.slice(0, firstColon))
+    fieldId = safeDecodeURIComponent(trimmed.slice(0, firstColon))
     operator = trimmed.slice(firstColon + 1, secondColon) as FilterOperator
     rawValue = trimmed.slice(secondColon + 1)
   }
 
   let value: string | string[]
   if (operator === "between" && rawValue.includes("..")) {
-    value = rawValue.split("..").map((v) => decodeURIComponent(v))
+    value = rawValue.split("..").map((v) => safeDecodeURIComponent(v))
   } else if (
     (operator === "is-any-of" || operator === "is-none-of") &&
     rawValue.includes("|")
   ) {
-    value = rawValue.split("|").map((v) => decodeURIComponent(v))
+    value = rawValue.split("|").map((v) => safeDecodeURIComponent(v))
   } else {
-    value = decodeURIComponent(rawValue)
+    value = safeDecodeURIComponent(rawValue)
   }
 
   return {

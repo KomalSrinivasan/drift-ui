@@ -43,7 +43,11 @@ export function FilterBuilderUrlStatePreview() {
   function handleQueryChange(event: React.ChangeEvent<HTMLInputElement>) {
     const nextQuery = event.target.value
     setQueryString(nextQuery)
-    setFilters(parseFilters(nextQuery))
+    try {
+      setFilters(parseFilters(nextQuery))
+    } catch {
+      // Keep previous valid filters while the query string is incomplete or malformed
+    }
   }
 
   return (
@@ -54,6 +58,7 @@ export function FilterBuilderUrlStatePreview() {
           value={queryString}
           onChange={handleQueryChange}
           placeholder="e.g. status:is:open,points:gt:2"
+          aria-label="Filter query string"
           className="flex-1 rounded-md border bg-background px-2 py-1 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>

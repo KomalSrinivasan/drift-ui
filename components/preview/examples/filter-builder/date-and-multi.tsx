@@ -62,7 +62,7 @@ export function FilterBuilderDateAndMultiPreview() {
       <FilterBuilder
         fields={FIELDS}
         value={filters}
-        onValueChange={(val) => setFilters(val as Filter[])}
+        onValueChange={setFilters}
       />
       <pre className="overflow-x-auto rounded-md border p-3 font-mono text-xs text-muted-foreground">
         {JSON.stringify(filters, null, 2)}

@@ -278,6 +278,7 @@ function DateValueEditor({
         {isBetween ? (
           <Calendar
             mode="range"
+            defaultMonth={dateRange?.from}
             selected={dateRange}
             onSelect={handleRangeSelect}
             initialFocus
@@ -285,6 +286,7 @@ function DateValueEditor({
         ) : (
           <Calendar
             mode="single"
+            defaultMonth={singleDate}
             selected={singleDate}
             onSelect={handleSingleSelect}
             initialFocus

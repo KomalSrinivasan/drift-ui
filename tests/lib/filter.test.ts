@@ -146,6 +146,22 @@ describe("filter", () => {
     expect(
       matchesFilter(new Date("2025-03-14"), filterOf("before", "2025-03-15"))
     ).toBe(true)
+
+    // rejects impossible overflow dates like 2025-02-31
+    expect(matchesFilter("2025-02-28", filterOf("before", "2025-02-31"))).toBe(
+      false
+    )
+
+    // rejects invalid date boundaries
+    expect(matchesFilter("2025-03-14", filterOf("before", "not-a-date"))).toBe(
+      false
+    )
+    expect(matchesFilter("2025-03-14", filterOf("after", "not-a-date"))).toBe(
+      false
+    )
+    expect(
+      matchesFilter("2025-03-14", filterOf("between", "not-a-date..2025-03-20"))
+    ).toBe(false)
   })
 
   it("evaluates multi-select operators (is-any-of and is-none-of)", () => {
@@ -293,6 +309,24 @@ describe("filter", () => {
       expect(converted.filters).toHaveLength(2)
     })
 
+    it("ignores empty child groups when evaluating parent groups", () => {
+      const orWithEmptyChild: FilterGroup = {
+        id: "root",
+        conjunction: "or",
+        filters: [
+          filterOf("is", "closed", "status"),
+          { id: "empty", conjunction: "and", filters: [] },
+        ],
+      }
+      // item has status "open", so closed is false, and empty group should not make it match
+      expect(matchesFilterGroup(item, orWithEmptyChild)).toBe(false)
+
+      // empty root group still matches all rows (no filters active)
+      expect(
+        matchesFilterGroup(item, { id: "root", conjunction: "or", filters: [] })
+      ).toBe(true)
+    })
+
     it("matchesFilters helper handles both arrays and groups", () => {
       expect(
         matchesFilters(item, [
@@ -405,6 +439,29 @@ describe("filter", () => {
       expect(parsed[0].value).toBe("invoice: error, [urgent]")
     })
 
+    it("escapes and parses parentheses in filter values without corrupting group parsing", () => {
+      const filters: Filter[] = [
+        {
+          id: "1",
+          fieldId: "title",
+          operator: "contains",
+          value: "error (urgent)",
+        },
+        {
+          id: "2",
+          fieldId: "status",
+          operator: "is",
+          value: "open",
+        },
+      ]
+      const serialized = serializeFilters(filters)
+      expect(serialized).toContain("%28urgent%29")
+      const parsed = parseFilters(serialized) as Filter[]
+      expect(parsed).toHaveLength(2)
+      expect(parsed[0].value).toBe("error (urgent)")
+      expect(parsed[1].fieldId).toBe("status")
+    })
+
     it("falls back to parsing JSON strings gracefully", () => {
       const json = JSON.stringify([
         { fieldId: "status", operator: "is", value: "open" },
@@ -417,12 +474,12 @@ describe("filter", () => {
   })
 
   describe("scale benchmark", () => {
-    it("evaluates a tree of 150 filters across 3 nested levels in sub-millisecond time", () => {
+    it("evaluates a tree of 150 filters across nested levels in sub-millisecond time", () => {
       const root = createFilterGroup("and")
       for (let g = 0; g < 5; g++) {
-        const subGroup = createFilterGroup(g % 2 === 0 ? "and" : "or")
+        const subGroup = createFilterGroup("and")
         for (let s = 0; s < 3; s++) {
-          const leafGroup = createFilterGroup("or")
+          const leafGroup = createFilterGroup("and")
           for (let f = 0; f < 10; f++) {
             leafGroup.filters.push({
               id: `f_${g}_${s}_${f}`,
@@ -436,13 +493,13 @@ describe("filter", () => {
         root.filters.push(subGroup)
       }
 
-      // 5 * 3 * 10 = 150 filters
-      const item = { points: 7 }
+      // 5 * 3 * 10 = 150 filters, all AND conditions must be evaluated without short-circuiting
+      const item = { points: 100 }
       const start = performance.now()
       const result = matchesFilterGroup(item, root)
       const elapsed = performance.now() - start
 
-      expect(typeof result).toBe("boolean")
+      expect(result).toBe(true)
       expect(elapsed).toBeLessThan(10) // Well under 10ms
     })
   })

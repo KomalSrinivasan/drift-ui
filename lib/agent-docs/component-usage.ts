@@ -261,7 +261,7 @@ export function AttachmentsField() {
   },
   "filter-builder": {
     notes:
-      "Chip based filters with nested AND/OR groups, date fields, multi-select, and URL serialization. fields: FilterField[] with { id, label, type: 'text' | 'number' | 'select' | 'date', options? }. Value is Filter[] or FilterGroup. Use matchesFilters(row, filters) from @/lib/filter. Scale limit: up to 3 nested levels and 20 filters recommended in UI.",
+      "Chip based filters with nested AND/OR groups, date fields, multi-select, and URL serialization. fields: FilterField[] with { id, label, type: 'text' | 'number' | 'select' | 'date', options? }. Value is Filter[] or FilterGroup. Use matchesFilters(row, filters) from @/lib/filter. Scale limit: up to 2 nested levels and 20 filters recommended in UI.",
     example: `"use client"
 
 import { useState } from "react"

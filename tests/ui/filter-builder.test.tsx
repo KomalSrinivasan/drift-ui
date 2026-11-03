@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -198,7 +198,23 @@ describe("FilterBuilder", () => {
     expect(dateButton.textContent).toContain("Apr 15, 2025")
 
     await user.click(dateButton)
-    expect(document.querySelector("[data-slot=calendar]")).toBeInTheDocument()
+    const calendar = document.querySelector(
+      "[data-slot=calendar]"
+    ) as HTMLElement
+    expect(calendar).toBeInTheDocument()
+
+    const day20 = within(calendar).getByRole("button", { name: /April 20/i })
+    await user.click(day20)
+
+    expect(onValueChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        id: "d1",
+        fieldId: "due",
+        operator: "before",
+        value: "2025-04-20",
+      }),
+    ])
+    expect(dateButton.textContent).toContain("Apr 20, 2025")
   })
 
   it("manages nested AND/OR groups and conjunction toggling", async () => {

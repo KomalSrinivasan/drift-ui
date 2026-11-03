@@ -20,24 +20,63 @@ import { FilterMenu, FilterMenuItem } from "@/registry/default/ui/filter-menu"
 
 const MAX_NESTING_DEPTH = 2
 
-function FilterBuilder<
-  T extends Filter[] | FilterGroup = Filter[] | FilterGroup,
->({
+type FilterBuilderBaseProps = Omit<
+  React.ComponentProps<"div">,
+  "defaultValue" | "onChange"
+> & {
+  fields: FilterField[]
+  allowGroups?: boolean
+}
+
+type FilterBuilderGroupProps = FilterBuilderBaseProps & {
+  value: FilterGroup
+  defaultValue?: FilterGroup
+  onValueChange?: (value: FilterGroup) => void
+}
+
+type FilterBuilderFlatProps = FilterBuilderBaseProps & {
+  value: Filter[]
+  defaultValue?: Filter[]
+  allowGroups?: false
+  onValueChange?: (value: Filter[]) => void
+}
+
+type FilterBuilderExplicitGroupsFlatProps = FilterBuilderBaseProps & {
+  value: Filter[]
+  defaultValue?: Filter[]
+  allowGroups: true
+  onValueChange?: (value: Filter[] | FilterGroup) => void
+}
+
+type FilterBuilderUncontrolledOrUnionProps = FilterBuilderBaseProps & {
+  value?: Filter[] | FilterGroup
+  defaultValue?: Filter[] | FilterGroup
+  onValueChange?: (value: Filter[] | FilterGroup) => void
+}
+
+type FilterBuilderProps =
+  | FilterBuilderGroupProps
+  | FilterBuilderFlatProps
+  | FilterBuilderExplicitGroupsFlatProps
+  | FilterBuilderUncontrolledOrUnionProps
+
+function FilterBuilder({
   fields,
   value,
-  defaultValue = [] as unknown as T,
+  defaultValue = [] as Filter[] | FilterGroup,
   onValueChange,
-  allowGroups = true,
+  allowGroups: allowGroupsProp,
   "aria-label": ariaLabel = "Filters",
   className,
   ...props
-}: Omit<React.ComponentProps<"div">, "defaultValue" | "onChange"> & {
-  fields: FilterField[]
-  value?: T
-  defaultValue?: T
-  onValueChange?: (value: T) => void
-  allowGroups?: boolean
-}) {
+}: FilterBuilderProps) {
+  const allowGroups =
+    allowGroupsProp !== undefined
+      ? allowGroupsProp
+      : value !== undefined
+        ? isFilterGroup(value)
+        : true
+
   const { value: filters, setValue: setFilters } = useControllableState<
     Filter[] | FilterGroup
   >({
@@ -68,6 +107,7 @@ function FilterBuilder<
   }
 
   function addGroupFlat() {
+    if (!allowGroups) return
     const newGroup = createFilterGroup("and")
     const currentFilters = Array.isArray(filters) ? filters : []
     setFilters({
@@ -368,4 +408,4 @@ function FilterBuilder<
   )
 }
 
-export { FilterBuilder }
+export { FilterBuilder, type FilterBuilderProps }

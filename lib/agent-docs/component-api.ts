@@ -620,7 +620,7 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
     {
       name: "FilterBuilder",
       description:
-        "A row of filter chips with AND/OR groups, date fields, and multi-select. Scale limit: up to 3 nested levels and 20 filters recommended in UI.",
+        "A row of filter chips with AND/OR groups, date fields, and multi-select. Scale limit: up to 2 nested levels and 20 filters recommended in UI.",
       props: [
         {
           name: "fields",

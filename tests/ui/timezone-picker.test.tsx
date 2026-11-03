@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -16,7 +16,7 @@ async function openPicker(user: ReturnType<typeof userEvent.setup>) {
   const search = await screen.findByRole("combobox", {
     name: "Search time zones",
   })
-  // Base UI moves focus into the popup a tick after it mounts.
+  // In the Base UI build, focus reaches the search field a tick after mounting.
   await waitFor(() => expect(search).toHaveFocus())
   return search
 }
@@ -131,6 +131,42 @@ describe("TimezonePicker", () => {
     expect(
       screen.getByRole("combobox", { name: "Search time zones" })
     ).toHaveAttribute("aria-activedescendant", screen.getByRole("option").id)
+  })
+
+  it("shows the placeholder for an unknown zone instead of crashing", () => {
+    render(<TimezonePicker aria-label="Time zone" value="Asia/Kolkata " />)
+    expect(trigger()).toHaveTextContent("Select a time zone")
+  })
+
+  it("skips unknown zones in timeZones", async () => {
+    const user = userEvent.setup()
+    render(
+      <TimezonePicker
+        aria-label="Time zone"
+        timeZones={["Europe/London", "Foo/Bar"]}
+      />
+    )
+
+    await openPicker(user)
+    expect(screen.getAllByRole("option")).toHaveLength(1)
+  })
+
+  it("leaves Enter to the IME while it is composing", async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <TimezonePicker
+        aria-label="Time zone"
+        timeZones={ZONES}
+        onValueChange={onValueChange}
+      />
+    )
+
+    const search = await openPicker(user)
+    fireEvent.keyDown(search, { key: "Enter", isComposing: true })
+    fireEvent.keyDown(search, { key: "Enter", keyCode: 229 })
+
+    expect(onValueChange).not.toHaveBeenCalled()
   })
 
   it("selects a zone by click", async () => {

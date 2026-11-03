@@ -20,6 +20,23 @@ const RENAMED_ZONES: Record<string, string> = {
   "Pacific/Truk": "Pacific/Chuuk",
 }
 
+const validity = new Map<string, boolean>()
+
+// Intl throws a RangeError for unknown names, so check before formatting.
+export function isValidTimeZone(timeZone: string) {
+  let valid = validity.get(timeZone)
+  if (valid === undefined) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone })
+      valid = true
+    } catch {
+      valid = false
+    }
+    validity.set(timeZone, valid)
+  }
+  return valid
+}
+
 export function toCurrentTimezoneName(timeZone: string) {
   return RENAMED_ZONES[timeZone] ?? timeZone
 }
@@ -99,6 +116,7 @@ export function listTimezones(
   ids: string[] = getTimezoneIds()
 ): TimezoneOption[] {
   return [...new Set(ids.map(toCurrentTimezoneName))]
+    .filter(isValidTimeZone)
     .map((value) => {
       const offset = getTimezoneOffset(value, date)
       return {

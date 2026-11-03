@@ -9,6 +9,7 @@ import {
   formatTimezoneLabel,
   formatTimezoneTime,
   getTimezoneOffset,
+  isValidTimeZone,
   listTimezones,
   toCurrentTimezoneName,
 } from "@/registry/default/lib/timezone-picker"
@@ -48,7 +49,9 @@ function TimezonePicker({
     defaultValue,
     onChange: onValueChange,
   })
-  const current = toCurrentTimezoneName(value)
+  const renamed = toCurrentTimezoneName(value)
+  // An unknown name shows the placeholder instead of crashing the render.
+  const current = renamed && isValidTimeZone(renamed) ? renamed : ""
   const [isOpen, setIsOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   // null means "the selected zone", resolved against the current list.
@@ -57,8 +60,8 @@ function TimezonePicker({
   const [openedAt, setOpenedAt] = React.useState<Date | null>(null)
 
   const options = React.useMemo(
-    () => (openedAt ? listTimezones(openedAt, timeZones) : []),
-    [openedAt, timeZones]
+    () => (isOpen && openedAt ? listTimezones(openedAt, timeZones) : []),
+    [isOpen, openedAt, timeZones]
   )
   const matches = filterTimezones(options, query)
   const highlightedIndex = Math.min(
@@ -84,6 +87,8 @@ function TimezonePicker({
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    // Leave keys that confirm an IME composition to the IME.
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return
     switch (event.key) {
       case "ArrowDown":
       case "ArrowUp": {
@@ -110,6 +115,8 @@ function TimezonePicker({
         type="button"
         role="combobox"
         aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-controls={isOpen ? listId : undefined}
         disabled={disabled}
         data-slot="timezone-picker"
         className={cn(
@@ -164,12 +171,7 @@ function TimezonePicker({
           data-slot="timezone-picker-list"
           className="relative max-h-64 overflow-y-auto"
         >
-          {matches.length === 0 ? (
-            <p className="px-2 py-1.5 text-sm text-muted-foreground">
-              No time zone found
-            </p>
-          ) : (
-            openedAt &&
+          {openedAt &&
             matches.map((option, index) => (
               <div
                 key={option.value}
@@ -192,9 +194,16 @@ function TimezonePicker({
                   <CheckIcon className="size-4 shrink-0" />
                 )}
               </div>
-            ))
-          )}
+            ))}
         </div>
+        {matches.length === 0 && (
+          <p
+            role="status"
+            className="px-2 py-1.5 text-sm text-muted-foreground"
+          >
+            No time zone found
+          </p>
+        )}
       </PopoverContent>
     </Popover>
   )

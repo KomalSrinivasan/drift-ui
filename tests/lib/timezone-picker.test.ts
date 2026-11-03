@@ -5,6 +5,7 @@ import {
   formatTimezoneLabel,
   getTimezoneIds,
   getTimezoneOffset,
+  isValidTimeZone,
   listTimezones,
   parseOffsetMinutes,
   toCurrentTimezoneName,
@@ -67,6 +68,15 @@ describe("timezone-picker logic", () => {
       "Asia/Kolkata",
       "Asia/Tokyo",
     ])
+  })
+
+  it("drops names Intl does not know", () => {
+    expect(isValidTimeZone("Asia/Tokyo")).toBe(true)
+    expect(isValidTimeZone("Foo/Bar")).toBe(false)
+    expect(isValidTimeZone("Asia/Kolkata ")).toBe(false)
+    expect(
+      listTimezones(WINTER, ["Foo/Bar", "Asia/Tokyo"]).map((o) => o.value)
+    ).toEqual(["Asia/Tokyo"])
   })
 
   it("renames and dedupes a restricted list", () => {

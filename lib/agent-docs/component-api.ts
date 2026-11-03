@@ -1954,6 +1954,34 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       rest: "<span>",
     },
   ],
+  "timezone-picker": [
+    {
+      name: "TimezonePicker",
+      description:
+        "A button that opens a searchable list of IANA time zones, each with its UTC offset and current local time. In the list, arrow keys move, Enter selects, and Escape closes it and returns focus to the button.",
+      props: [
+        STATE_PROPS.value("string", "IANA time zone name"),
+        STATE_PROPS.defaultValue("string", '""'),
+        STATE_PROPS.onValueChange(
+          "(value: string) => void",
+          "when a time zone is picked"
+        ),
+        {
+          name: "timeZones",
+          type: "string[]",
+          default: 'Intl.supportedValuesOf("timeZone")',
+          description: "Limits the list to these IANA names.",
+        },
+        {
+          name: "placeholder",
+          type: "string",
+          default: '"Select a time zone"',
+          description: "Shown while no zone is selected.",
+        },
+      ],
+      rest: "<button>",
+    },
+  ],
   tour: [
     {
       name: "Tour",

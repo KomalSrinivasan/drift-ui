@@ -73,6 +73,7 @@ const ENTRY_LAYOUT: {
   { slug: "signature-pad", category: "inputs" },
   { slug: "tags-input", category: "inputs" },
   { slug: "time-field", category: "inputs", stageClassName: "gap-8" },
+  { slug: "timezone-picker", category: "inputs" },
   { slug: "avatar-group", category: "structure" },
   { slug: "description-list", category: "structure" },
   { slug: "diff-viewer", category: "structure" },

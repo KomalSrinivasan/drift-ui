@@ -49,6 +49,7 @@ import { StepperPreview } from "@/components/preview/stepper-preview"
 import { TagsInputPreview } from "@/components/preview/tags-input-preview"
 import { TimeFieldPreview } from "@/components/preview/time-field-preview"
 import { TimelinePreview } from "@/components/preview/timeline-preview"
+import { TimezonePickerPreview } from "@/components/preview/timezone-picker-preview"
 import { TourPreview } from "@/components/preview/tour-preview"
 import { TransferListPreview } from "@/components/preview/transfer-list-preview"
 import { TreeViewPreview } from "@/components/preview/tree-view-preview"
@@ -93,6 +94,7 @@ export const PREVIEWS: Record<string, ComponentType> = {
   "tags-input": TagsInputPreview,
   "time-field": TimeFieldPreview,
   timeline: TimelinePreview,
+  "timezone-picker": TimezonePickerPreview,
   tour: TourPreview,
   "transfer-list": TransferListPreview,
   "tree-view": TreeViewPreview,

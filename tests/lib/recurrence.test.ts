@@ -132,4 +132,204 @@ describe("recurrence", () => {
       "2026-11-5 10:00",
     ])
   })
+
+  it("preserves unknown and unhandled RRULE parts on round-trip", () => {
+    const rule =
+      "FREQ=WEEKLY;INTERVAL=2;BYDAY=TU;WKST=SU;BYHOUR=9;X-CUSTOM=DRIFT"
+    const parsed = parseRRule(rule)
+    expect(parsed.unknownParts).toEqual({
+      WKST: "SU",
+      BYHOUR: "9",
+      "X-CUSTOM": "DRIFT",
+    })
+    expect(formatRRule(parsed)).toBe(
+      "FREQ=WEEKLY;INTERVAL=2;BYDAY=TU;WKST=SU;BYHOUR=9;X-CUSTOM=DRIFT"
+    )
+  })
+
+  it("supports BYSETPOS for last weekday, first weekday, etc.", () => {
+    const lastWeekdayRule = "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"
+    const parsed = parseRRule(lastWeekdayRule)
+    expect(parsed.bySetPos).toEqual([-1])
+    expect(describeRecurrence(parsed, TUESDAY)).toBe(
+      "Monthly on the last weekday"
+    )
+    expect(days(lastWeekdayRule, TUESDAY, 3)).toEqual([
+      "2026-11-30 10:00",
+      "2026-12-31 10:00",
+      "2027-1-29 10:00",
+    ])
+
+    const firstWeekdayRule = "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1"
+    expect(describeRecurrence(parseRRule(firstWeekdayRule), TUESDAY)).toBe(
+      "Monthly on the first weekday"
+    )
+    expect(days(firstWeekdayRule, new Date(2026, 10, 1, 10, 0), 3)).toEqual([
+      "2026-11-2 10:00",
+      "2026-12-1 10:00",
+      "2027-1-1 10:00",
+    ])
+  })
+
+  it("supports BYMONTH and ordinals in yearly recurrence", () => {
+    const rule = "FREQ=YEARLY;BYMONTH=3;BYDAY=2SU"
+    const parsed = parseRRule(rule)
+    expect(parsed.byMonth).toEqual([3])
+    expect(describeRecurrence(parsed, TUESDAY)).toBe(
+      "Yearly in March on the second Sunday"
+    )
+    expect(days(rule, new Date(2027, 0, 1, 10, 0), 3)).toEqual([
+      "2027-3-14 10:00",
+      "2028-3-12 10:00",
+      "2029-3-11 10:00",
+    ])
+  })
+
+  it("skips dates specified in EXDATE", () => {
+    const multiLine = [
+      "RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=TU",
+      "EXDATE:20261110T100000Z,20261124T100000Z",
+    ].join("\n")
+
+    const parsed = parseRRule(multiLine)
+    expect(parsed.exdates).toHaveLength(2)
+
+    const results = occurrences(parsed, TUESDAY, 3)
+    expect(
+      results.map(
+        (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+      )
+    ).toEqual(["2026-11-3", "2026-11-17", "2026-12-1"])
+
+    const optionsResults = occurrences(
+      parseRRule("FREQ=WEEKLY;BYDAY=TU"),
+      TUESDAY,
+      3,
+      {
+        exdates: [new Date(2026, 10, 10)],
+      }
+    )
+    expect(
+      optionsResults.map(
+        (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+      )
+    ).toEqual(["2026-11-3", "2026-11-17", "2026-11-24"])
+  })
+
+  it("keeps exact wall-clock time invariant across daylight saving transitions", () => {
+    const beforeSpringForward = new Date(2026, 2, 6, 10, 0, 0)
+    const springOccurrences = occurrences(
+      parseRRule("FREQ=DAILY"),
+      beforeSpringForward,
+      5
+    )
+    for (const occ of springOccurrences) {
+      expect(occ.getHours()).toBe(10)
+      expect(occ.getMinutes()).toBe(0)
+    }
+
+    const beforeFallBack = new Date(2026, 9, 30, 10, 0, 0)
+    const fallOccurrences = occurrences(
+      parseRRule("FREQ=DAILY"),
+      beforeFallBack,
+      5
+    )
+    for (const occ of fallOccurrences) {
+      expect(occ.getHours()).toBe(10)
+      expect(occ.getMinutes()).toBe(0)
+    }
+  })
+
+  it("round-trips Google Calendar export fixtures", () => {
+    const gcalWeekly = "RRULE:FREQ=WEEKLY;WKST=SU;BYDAY=MO,WE,FR"
+    const parsed = parseRRule(gcalWeekly)
+    expect(formatRRule(parsed, { prefix: true })).toBe(
+      "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;WKST=SU"
+    )
+
+    const gcalExdate = [
+      "RRULE:FREQ=WEEKLY;WKST=SU;BYDAY=TU",
+      "EXDATE;TZID=America/New_York:20261110T100000",
+    ].join("\n")
+    const parsedExdate = parseRRule(gcalExdate)
+    expect(parsedExdate.unknownParts?.WKST).toBe("SU")
+    expect(parsedExdate.tzid).toBe("America/New_York")
+    expect(parsedExdate.exdates).toHaveLength(1)
+  })
+
+  it("round-trips Outlook export fixtures", () => {
+    const outlookMonthly =
+      "RRULE:FREQ=MONTHLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"
+    const parsed = parseRRule(outlookMonthly)
+    expect(parsed.bySetPos).toEqual([-1])
+    expect(formatRRule(parsed, { prefix: true })).toBe(
+      "RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"
+    )
+
+    const outlookYearly = "RRULE:FREQ=YEARLY;INTERVAL=1;BYMONTH=3;BYDAY=2SU"
+    const parsedYearly = parseRRule(outlookYearly)
+    expect(parsedYearly.byMonth).toEqual([3])
+    expect(formatRRule(parsedYearly, { prefix: true })).toBe(
+      "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU"
+    )
+  })
+
+  it("round-trips Apple Calendar export fixtures", () => {
+    const appleYearly = "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU"
+    const parsed = parseRRule(appleYearly)
+    expect(parsed.byMonth).toEqual([11])
+    expect(formatRRule(parsed, { prefix: true })).toBe(
+      "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU"
+    )
+
+    const appleCustom =
+      "RRULE:FREQ=WEEKLY;BYDAY=TU;X-APPLE-TRAVEL-ADVISORY-BEHAVIOR=AUTOMATIC"
+    const parsedCustom = parseRRule(appleCustom)
+    expect(
+      parsedCustom.unknownParts?.["X-APPLE-TRAVEL-ADVISORY-BEHAVIOR"]
+    ).toBe("AUTOMATIC")
+    expect(formatRRule(parsedCustom, { prefix: true })).toBe(appleCustom)
+  })
+
+  it("handles awkward recurrences (5th Tuesday, leap day)", () => {
+    const fifthTuesday = occurrences(
+      parseRRule("FREQ=MONTHLY;BYDAY=5TU"),
+      TUESDAY,
+      2
+    )
+    expect(
+      fifthTuesday.map(
+        (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+      )
+    ).toEqual(["2026-12-29", "2027-3-30"])
+
+    const leapDay = new Date(2024, 1, 29, 12, 0)
+    const leapOccurrences = occurrences(parseRRule("FREQ=YEARLY"), leapDay, 2)
+    expect(
+      leapOccurrences.map(
+        (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+      )
+    ).toEqual(["2024-2-29", "2028-2-29"])
+  })
+
+  it("satisfies scale limits: parses 1,000 rules and expands 500 occurrences quickly", () => {
+    const startParse = performance.now()
+    for (let i = 0; i < 1000; i++) {
+      parseRRule(
+        "FREQ=MONTHLY;INTERVAL=2;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1;WKST=SU;X-DRIFT=1"
+      )
+    }
+    const parseDuration = performance.now() - startParse
+    expect(parseDuration).toBeLessThan(100)
+
+    const startOccurrences = performance.now()
+    const expanded = occurrences(
+      parseRRule("FREQ=DAILY;INTERVAL=1"),
+      TUESDAY,
+      500
+    )
+    const occurrencesDuration = performance.now() - startOccurrences
+    expect(expanded).toHaveLength(500)
+    expect(occurrencesDuration).toBeLessThan(100)
+  })
 })

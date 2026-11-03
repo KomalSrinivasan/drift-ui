@@ -58,24 +58,32 @@ function capitalize(text: string) {
 
 function monthlyChoices(recurrence: Recurrence, start: Date) {
   const weekday = weekdayOf(start)
-  const patches: Pick<Recurrence, "byDay" | "byMonthDay">[] = [
-    { byDay: [], byMonthDay: [start.getDate()] },
-  ]
+  const patches: (Pick<Recurrence, "byDay" | "byMonthDay"> & {
+    bySetPos?: number[]
+  })[] = [{ byDay: [], byMonthDay: [start.getDate()], bySetPos: undefined }]
   if (ordinalWeekOf(start) <= 4) {
     patches.push({
       byDay: [{ weekday, ordinal: ordinalWeekOf(start) }],
       byMonthDay: [],
+      bySetPos: undefined,
     })
   }
   if (isLastWeekOf(start)) {
-    patches.push({ byDay: [{ weekday, ordinal: -1 }], byMonthDay: [] })
+    patches.push({
+      byDay: [{ weekday, ordinal: -1 }],
+      byMonthDay: [],
+      bySetPos: undefined,
+    })
   }
   const current = {
     byDay: recurrence.byDay,
     byMonthDay:
-      recurrence.byDay.length === 0 && recurrence.byMonthDay.length === 0
+      recurrence.byDay.length === 0 &&
+      recurrence.byMonthDay.length === 0 &&
+      !recurrence.bySetPos
         ? [start.getDate()]
         : recurrence.byMonthDay,
+    bySetPos: recurrence.bySetPos,
   }
   const choices = patches.map((patch) => ({
     key: formatRRule({ ...recurrence, ...patch }),
@@ -99,6 +107,8 @@ function RecurrenceEditor({
   onValueChange,
   start,
   showPreview = 0,
+  tzid,
+  exdates,
   className,
   ...props
 }: Omit<React.ComponentProps<"fieldset">, "defaultValue"> & {
@@ -107,6 +117,8 @@ function RecurrenceEditor({
   onValueChange?: (rule: string) => void
   start?: Date
   showPreview?: number
+  tzid?: string
+  exdates?: (Date | string)[]
 }) {
   const id = React.useId()
   const { value: rule, setValue: setRule } = useControllableState({
@@ -130,7 +142,12 @@ function RecurrenceEditor({
       : [weekdayOf(anchor)]
   const monthly = monthlyChoices(recurrence, anchor)
   const upcoming =
-    showPreview > 0 ? occurrences(recurrence, anchor, showPreview) : []
+    showPreview > 0
+      ? occurrences(recurrence, anchor, showPreview, {
+          tzid: tzid ?? recurrence.tzid,
+          exdates: exdates ?? recurrence.exdates,
+        })
+      : []
   const dateFormatter = new Intl.DateTimeFormat(undefined, {
     weekday: "short",
     month: "short",
@@ -147,6 +164,8 @@ function RecurrenceEditor({
       frequency: next,
       byDay: next === "WEEKLY" ? [{ weekday: weekdayOf(anchor) }] : [],
       byMonthDay: next === "MONTHLY" ? [anchor.getDate()] : [],
+      bySetPos: undefined,
+      byMonth: undefined,
     })
   }
 
@@ -327,6 +346,17 @@ function RecurrenceEditor({
       >
         {describeRecurrence(recurrence, anchor)}
       </p>
+
+      {recurrence.unknownParts &&
+        Object.keys(recurrence.unknownParts).length > 0 && (
+          <p
+            data-slot="recurrence-editor-custom-parts"
+            className="text-xs text-muted-foreground"
+          >
+            Preserving custom rules:{" "}
+            {Object.keys(recurrence.unknownParts).join(", ")}
+          </p>
+        )}
 
       {upcoming.length > 0 && (
         <div className="grid gap-1.5">

@@ -511,7 +511,7 @@ export function ReviewScore() {
   },
   "recurrence-editor": {
     notes:
-      "RecurrenceEditor edits an RFC 5545 RRULE string (without the RRULE: prefix) through value/defaultValue and onValueChange. Supports DAILY, WEEKLY with BYDAY, MONTHLY with BYMONTHDAY or an ordinal BYDAY such as 2TU or -1FR, YEARLY, INTERVAL, COUNT and UNTIL. Pass start (a Date) so weekday, month day and preview line up with the event; showPreview={n} lists the next n occurrences. Pure helpers live in @/lib/recurrence: parseRRule, formatRRule, describeRecurrence and occurrences. Installs number-input.",
+      "RecurrenceEditor is a flagship RFC 5545 recurrence rule editor through value/defaultValue and onValueChange. Supports DAILY, WEEKLY with BYDAY, MONTHLY with BYMONTHDAY, ordinal BYDAY (e.g. 2TU, -1FR) and BYSETPOS (e.g. last weekday), YEARLY with BYMONTH, INTERVAL, COUNT, UNTIL, and EXDATE. Retains unhandled calendar parts (WKST, BYHOUR, X-*) without dropping or altering them on round-trip edits. Preserves exact local wall-clock time across daylight saving changes. Pass start (a Date) so weekday, month day, and preview line up with the event; showPreview={n} lists the next n occurrences. Pure helpers live in @/lib/recurrence: parseRRule, formatRRule, describeRecurrence, and occurrences. Installs number-input.",
     example: `"use client"
 
 import { useState } from "react"

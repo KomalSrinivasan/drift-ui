@@ -160,4 +160,79 @@ describe("RecurrenceEditor", () => {
     expect(screen.getByLabelText("Frequency")).toBeDisabled()
     expect(screen.getByRole("radio", { name: "Never" })).toBeDisabled()
   })
+
+  it("preserves unknown rules like WKST and BYHOUR during user edits", async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <RecurrenceEditor
+        aria-label="Repeat"
+        defaultValue="FREQ=WEEKLY;INTERVAL=2;BYDAY=TU;WKST=SU;BYHOUR=9"
+        start={TUESDAY}
+        onValueChange={onValueChange}
+      />
+    )
+
+    expect(
+      document.querySelector("[data-slot=recurrence-editor-custom-parts]")
+    ).toHaveTextContent("Preserving custom rules: WKST, BYHOUR")
+
+    await user.click(screen.getByLabelText("Repeat every"))
+    await user.keyboard("{ArrowUp}")
+
+    expect(onValueChange).toHaveBeenLastCalledWith(
+      "FREQ=WEEKLY;INTERVAL=3;BYDAY=TU;WKST=SU;BYHOUR=9"
+    )
+  })
+
+  it("supports monthly choice with BYSETPOS and selects it", () => {
+    const onValueChange = vi.fn()
+    render(
+      <RecurrenceEditor
+        aria-label="Repeat"
+        defaultValue="FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"
+        start={TUESDAY}
+        onValueChange={onValueChange}
+      />
+    )
+
+    expect(summary()).toHaveTextContent("Monthly on the last weekday")
+    const select = screen.getByLabelText("Day of the month")
+    expect(
+      within(select)
+        .getAllByRole("option")
+        .map((option) => option.textContent)
+    ).toContain("On the last weekday")
+  })
+
+  it("filters excluded dates passed via exdates in the occurrences preview", () => {
+    render(
+      <RecurrenceEditor
+        aria-label="Repeat"
+        defaultValue="FREQ=WEEKLY;BYDAY=TU"
+        start={TUESDAY}
+        showPreview={3}
+        exdates={[new Date(2026, 10, 10)]}
+      />
+    )
+
+    expect(
+      within(screen.getByRole("list", { name: "Next occurrences" }))
+        .getAllByRole("listitem")
+        .map((item) => item.textContent)
+    ).toEqual(
+      [
+        new Date(2026, 10, 3),
+        new Date(2026, 10, 17),
+        new Date(2026, 10, 24),
+      ].map((date) =>
+        date.toLocaleDateString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      )
+    )
+  })
 })

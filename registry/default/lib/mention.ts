@@ -58,8 +58,20 @@ export type MentionSource = MentionOption[] | MentionSearch
 
 export type MentionRange = { start: number; end: number }
 
-const BEFORE_MENTION = /[\s([{"']/
-const AFTER_MENTION = /[\s.,!?;:)\]}"']/
+// Same boundary findActiveMention uses, so anything that opens the list can
+// also become a mention.
+const BEFORE_MENTION = /\s/
+const CLOSING_PUNCTUATION = /[.,!?;:)\]}"']/
+const WORD_CHARACTER = /[\p{L}\p{N}_]/u
+
+// A mention ends at whitespace, the end, or punctuation that is not followed by
+// more of a handle, so "@ana." ends at "." but "@ana.leex" does not.
+function closesMention(text: string, index: number) {
+  if (index === text.length || /\s/.test(text[index])) return true
+  if (!CLOSING_PUNCTUATION.test(text[index])) return false
+  const next = text[index + 1]
+  return next === undefined || !WORD_CHARACTER.test(next)
+}
 
 export function limitMentionOptions(options: MentionOption[]) {
   return options.slice(0, MAX_VISIBLE_OPTIONS)
@@ -90,9 +102,10 @@ export function findMentionRanges(
     let end = -1
     const limit = Math.min(text.length, index + longest)
     for (let candidate = limit; candidate > index + 1; candidate--) {
-      const closes =
-        candidate === text.length || AFTER_MENTION.test(text[candidate])
-      if (closes && tokens.has(text.slice(index, candidate))) {
+      if (
+        closesMention(text, candidate) &&
+        tokens.has(text.slice(index, candidate))
+      ) {
         end = candidate
         break
       }
@@ -111,16 +124,17 @@ function rangeAround(ranges: MentionRange[], position: number) {
   return ranges.find((range) => range.start < position && position < range.end)
 }
 
-// Keeps the caret out of mentions. A one-step move (arrow key) jumps over the
-// mention in the direction of travel; anything else goes to the nearest edge.
+// Keeps the caret out of mentions. An arrow-key step jumps over the mention in
+// the direction of travel; a click or anything else goes to the nearest edge.
 export function snapCaret(
   ranges: MentionRange[],
   position: number,
-  previous: number
+  previous: number,
+  stepped = false
 ) {
   const range = rangeAround(ranges, position)
   if (!range) return position
-  if (Math.abs(position - previous) === 1) {
+  if (stepped) {
     return previous <= range.start ? range.end : range.start
   }
   return position - range.start <= range.end - position

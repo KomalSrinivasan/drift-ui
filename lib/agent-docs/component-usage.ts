@@ -379,13 +379,14 @@ export function PaymentFields() {
   },
   "mention-textarea": {
     notes:
-      "Textarea that opens a suggestion list when the caret follows a trigger character. triggers maps a character to a list of options, for example { '@': people, '#': channels }, each { value, label, description? }, or to a search function (query, { signal }) => Promise<MentionOption[]>. A search runs searchDelay ms (default 150) after typing stops; each new query aborts the previous request, so stale responses never show, and the list shows loading, no results and error states in a polite status region. Selecting inserts trigger + value + space. Inserted mentions are atomic: Backspace right after one or Delete right before one removes it whole, the caret jumps over it, and a selection grows to cover it. Mentions are recognised from the text, so a mention is any trigger + value from a static list or picked from a search in this session. Enter and Tab are left to the IME while a Japanese, Chinese or Korean composition is active. Value is plain text with value/defaultValue/onValueChange. Finding mentions costs under 1 ms per keystroke at 200,000 characters and 10,000 known mentions.",
+      "Textarea that opens a suggestion list when the caret follows a trigger character. triggers maps a character to a list of options, for example { '@': people, '#': channels }, each { value, label, description? }, or to a search function (query, { signal }) => Promise<MentionOption[]>. A search runs searchDelay ms (default 150) after typing stops; each new query aborts the previous request, so stale responses never show, and the list shows loading, no results and error states in a polite status region. Selecting inserts trigger + value + space. Inserted mentions are atomic: Backspace right after one or Delete right before one removes it whole, the caret jumps over it, and a selection grows to cover it. Mentions are recognised from the text, so a mention is any trigger + value from a static list or picked from a search in this session. Enter and Tab are left to the IME while a Japanese, Chinese or Korean composition is active. Value is plain text with value/defaultValue/onValueChange. Each trigger key is one character. Finding mentions measured under 1 ms per change at 200,000 characters and 10,000 known mentions.",
     example: `import { MentionTextarea } from "@/components/ui/mention-textarea"
 
 const people = [{ value: "noor", label: "Noor Haddad" }, { value: "tomasz", label: "Tomasz Wierzba" }]
 
 async function searchChannels(query: string, { signal }: { signal: AbortSignal }) {
   const response = await fetch("/api/channels?q=" + encodeURIComponent(query), { signal })
+  if (!response.ok) throw new Error(response.statusText)
   return response.json()
 }
 

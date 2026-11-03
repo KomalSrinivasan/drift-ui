@@ -38,6 +38,8 @@ function MentionTextarea({
   onKeyDown,
   onCompositionStart,
   onCompositionEnd,
+  onBlur,
+  onPointerDown,
   className,
   ...props
 }: Omit<
@@ -53,6 +55,11 @@ function MentionTextarea({
   const listId = React.useId()
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
   const isComposingRef = React.useRef(false)
+  const steppedRef = React.useRef(false)
+  const triggersRef = React.useRef(triggers)
+  React.useLayoutEffect(() => {
+    triggersRef.current = triggers
+  })
   const { value: text, setValue: setText } = useControllableState({
     value,
     defaultValue,
@@ -68,15 +75,20 @@ function MentionTextarea({
   )
   const [result, setResult] = React.useState<SearchResult | null>(null)
 
-  // Static options and anything picked from a search count as mentions.
+  // Static options and anything picked from a search count as mentions. Keyed
+  // on content, so an inline triggers object doesn't redo the scan each render.
+  const staticTokens = Object.entries(triggers)
+    .flatMap(([trigger, source]) =>
+      typeof source === "function"
+        ? []
+        : source.map((option) => `${trigger}${option.value}`)
+    )
+    .join("\n")
   const tokens = React.useMemo(() => {
     const known = new Set(inserted)
-    for (const [trigger, source] of Object.entries(triggers)) {
-      if (typeof source === "function") continue
-      for (const option of source) known.add(`${trigger}${option.value}`)
-    }
+    for (const token of staticTokens.split("\n")) if (token) known.add(token)
     return known
-  }, [triggers, inserted])
+  }, [staticTokens, inserted])
   const ranges = React.useMemo(
     () => findMentionRanges(text, tokens),
     [text, tokens]
@@ -99,45 +111,50 @@ function MentionTextarea({
     mention !== null &&
     mention.start !== dismissedStart &&
     (isSearch || options.length > 0)
+  const activeIndex = Math.min(
+    highlightedIndex,
+    Math.max(0, options.length - 1)
+  )
   const [previousMentionKey, setPreviousMentionKey] = React.useState(mentionKey)
 
   if (mentionKey !== previousMentionKey) {
     setPreviousMentionKey(mentionKey)
     setHighlightedIndex(0)
+    // Leaving a mention forgets its dismissal and its last search result.
+    if (!mention) {
+      setDismissedStart(null)
+      setResult(null)
+    }
   }
 
-  const runSearch = React.useEffectEvent(
-    (trigger: string, query: string, key: string, signal: AbortSignal) => {
-      const search = triggers[trigger]
-      if (typeof search !== "function") return
-      search(query, { signal }).then(
-        (found) => {
-          if (signal.aborted) return
-          setResult({
-            key,
-            status: "done",
-            options: limitMentionOptions(found),
-          })
-        },
-        () => {
-          if (signal.aborted) return
-          setResult({ key, status: "error", options: [] })
-        }
-      )
-    }
-  )
-
-  const searchTrigger = isSearch ? mention?.trigger : undefined
-  const searchQuery = isSearch ? mention?.query : undefined
+  const searchTrigger = isSearch && isOpen ? mention?.trigger : undefined
+  const searchQuery = isSearch && isOpen ? mention?.query : undefined
   React.useEffect(() => {
     if (searchTrigger === undefined || searchQuery === undefined) return
     // Aborting on every new query is what drops stale responses.
     const controller = new AbortController()
-    const timer = setTimeout(
-      () =>
-        runSearch(searchTrigger, searchQuery, mentionKey, controller.signal),
-      searchDelay
-    )
+    const { signal } = controller
+    const timer = setTimeout(() => {
+      const search = triggersRef.current[searchTrigger]
+      if (typeof search !== "function") return
+      // Wrapping catches a search that throws, returns a non-promise or
+      // resolves something other than an array.
+      Promise.resolve()
+        .then(() => search(searchQuery, { signal }))
+        .then((found) => {
+          if (!Array.isArray(found)) throw new TypeError("Expected an array")
+          if (signal.aborted) return
+          setResult({
+            key: mentionKey,
+            status: "done",
+            options: limitMentionOptions(found),
+          })
+        })
+        .catch(() => {
+          if (signal.aborted) return
+          setResult({ key: mentionKey, status: "error", options: [] })
+        })
+    }, searchDelay)
     return () => {
       clearTimeout(timer)
       controller.abort()
@@ -166,6 +183,7 @@ function MentionTextarea({
     // Keys that confirm an IME composition (Japanese, Chinese, Korean) belong
     // to the IME. Safari reports them as keyCode 229 after compositionend.
     if (event.nativeEvent.isComposing || event.keyCode === 229) return
+    steppedRef.current = event.key === "ArrowLeft" || event.key === "ArrowRight"
 
     const { selectionStart, selectionEnd } = event.currentTarget
     const hasModifier = event.altKey || event.ctrlKey || event.metaKey
@@ -195,7 +213,7 @@ function MentionTextarea({
         event.preventDefault()
         const delta = event.key === "ArrowDown" ? 1 : -1
         setHighlightedIndex(
-          (highlightedIndex + delta + options.length) % options.length
+          (activeIndex + delta + options.length) % options.length
         )
         return
       }
@@ -203,7 +221,7 @@ function MentionTextarea({
       case "Tab":
         if (options.length === 0) return
         event.preventDefault()
-        selectOption(options[highlightedIndex])
+        selectOption(options[activeIndex])
         return
       case "Escape":
         event.preventDefault()
@@ -215,12 +233,17 @@ function MentionTextarea({
   function handleSelect(event: React.SyntheticEvent<HTMLTextAreaElement>) {
     const element = event.currentTarget
     const { selectionStart, selectionEnd, selectionDirection } = element
+    // React also fires onSelect on keydown, before the caret moves, so keep
+    // the arrow flag until the caret actually changes.
+    if (selectionStart === selectionEnd && selectionStart === caret) return
+    const stepped = steppedRef.current
+    steppedRef.current = false
     if (isComposingRef.current) {
       setCaret(selectionStart)
       return
     }
     if (selectionStart === selectionEnd) {
-      const snapped = snapCaret(ranges, selectionStart, caret)
+      const snapped = snapCaret(ranges, selectionStart, caret, stepped)
       if (snapped !== selectionStart) {
         element.setSelectionRange(snapped, snapped)
       }
@@ -235,7 +258,7 @@ function MentionTextarea({
         selectionDirection ?? undefined
       )
     }
-    setCaret(selectionStart)
+    setCaret(expanded.start)
   }
 
   const statusMessage =
@@ -254,9 +277,7 @@ function MentionTextarea({
     "aria-haspopup": "listbox",
     "aria-controls": isOpen ? listId : undefined,
     "aria-activedescendant":
-      isOpen && options.length > 0
-        ? `${listId}-${highlightedIndex}`
-        : undefined,
+      isOpen && options.length > 0 ? `${listId}-${activeIndex}` : undefined,
     value: text,
     onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => {
       setText(event.target.value)
@@ -274,6 +295,14 @@ function MentionTextarea({
       isComposingRef.current = false
       onCompositionEnd?.(event)
     },
+    onPointerDown: (event: React.PointerEvent<HTMLTextAreaElement>) => {
+      steppedRef.current = false
+      onPointerDown?.(event)
+    },
+    onBlur: (event: React.FocusEvent<HTMLTextAreaElement>) => {
+      isComposingRef.current = false
+      onBlur?.(event)
+    },
     className: cn(
       "flex field-sizing-content min-h-16 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
       "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
@@ -281,6 +310,14 @@ function MentionTextarea({
     ),
     ...props,
   } as const
+
+  // Lives outside the popup so it exists before the first message and
+  // announcements aren't lost when the popup mounts or closes.
+  const announcer = (
+    <span role="status" className="sr-only">
+      {isOpen ? statusMessage : ""}
+    </span>
+  )
 
   const list = (
     <>
@@ -295,7 +332,7 @@ function MentionTextarea({
             key={option.value}
             id={`${listId}-${index}`}
             role="option"
-            aria-selected={index === highlightedIndex}
+            aria-selected={index === activeIndex}
             onPointerDown={(event) => event.preventDefault()}
             onPointerMove={() => setHighlightedIndex(index)}
             onClick={() => selectOption(option)}
@@ -310,14 +347,10 @@ function MentionTextarea({
           </li>
         ))}
       </ul>
-      {isSearch && (
+      {isSearch && statusMessage && (
         <p
-          role="status"
           data-slot="mention-textarea-status"
-          className={cn(
-            "px-2 py-1.5 text-sm text-muted-foreground",
-            !statusMessage && "sr-only"
-          )}
+          className="px-2 py-1.5 text-sm text-muted-foreground"
         >
           {statusMessage}
         </p>
@@ -335,6 +368,7 @@ function MentionTextarea({
       <PopoverAnchor asChild>
         <textarea {...textareaProps} />
       </PopoverAnchor>
+      {announcer}
       <PopoverContent
         align="start"
         onOpenAutoFocus={(event) => event.preventDefault()}

@@ -959,7 +959,7 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           type: "Record<string, MentionOption[] | MentionSearch>",
           required: true,
           description:
-            'Maps a trigger character to its options, for example { "@": people, "#": searchChannels }. A static list is filtered on value and label; a MentionSearch is called with the query instead.',
+            'Maps a single trigger character to its options, for example { "@": people, "#": searchChannels }. A static list is filtered on value and label; a MentionSearch is called with the query instead.',
         },
         {
           name: "searchDelay",

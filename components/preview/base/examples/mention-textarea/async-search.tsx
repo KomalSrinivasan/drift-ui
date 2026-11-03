@@ -25,7 +25,10 @@ function searchPeople(query: string, { signal }: { signal: AbortSignal }) {
       },
       query.length < 2 ? 900 : 300
     )
-    signal.addEventListener("abort", () => clearTimeout(timer))
+    signal.addEventListener("abort", () => {
+      clearTimeout(timer)
+      reject(new DOMException("Aborted", "AbortError"))
+    })
   })
 }
 

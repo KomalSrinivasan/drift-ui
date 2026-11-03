@@ -56,15 +56,16 @@ describe("mention ranges", () => {
   const tokens = new Set(["@ana", "@ana.lee", "#ops"])
 
   it("finds whole known mentions and prefers the longest", () => {
-    expect(findMentionRanges("cc @ana, @ana.lee and (#ops)", tokens)).toEqual([
+    expect(findMentionRanges("cc @ana, @ana.lee and #ops.", tokens)).toEqual([
       { start: 3, end: 7 },
       { start: 9, end: 17 },
-      { start: 23, end: 27 },
+      { start: 22, end: 26 },
     ])
   })
 
   it("skips unknown or partial tokens and mid-word triggers", () => {
     expect(findMentionRanges("@anabel mail@ana @bob", tokens)).toEqual([])
+    expect(findMentionRanges("@ana.leex (#ops)", tokens)).toEqual([])
   })
 
   it("is empty when nothing is known", () => {
@@ -76,13 +77,14 @@ describe("caret and selection", () => {
   const ranges = [{ start: 3, end: 7 }]
 
   it("jumps over a mention in the direction of a one-step move", () => {
-    expect(snapCaret(ranges, 4, 3)).toBe(7)
-    expect(snapCaret(ranges, 6, 7)).toBe(3)
+    expect(snapCaret(ranges, 4, 3, true)).toBe(7)
+    expect(snapCaret(ranges, 6, 7, true)).toBe(3)
   })
 
   it("goes to the nearest edge for a click", () => {
     expect(snapCaret(ranges, 4, 0)).toBe(3)
     expect(snapCaret(ranges, 6, 0)).toBe(7)
+    expect(snapCaret(ranges, 4, 3)).toBe(3)
   })
 
   it("leaves positions outside or on an edge alone", () => {

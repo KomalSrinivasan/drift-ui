@@ -128,9 +128,36 @@ describe("MentionTextarea", () => {
     fireEvent.select(textarea())
     expect(textarea().selectionStart).toBe(3)
 
+    // A click one character in goes to the nearest edge...
+    textarea().setSelectionRange(4, 4)
+    fireEvent.select(textarea())
+    expect(textarea().selectionStart).toBe(3)
+
+    // ...while ArrowRight from the start jumps over the mention.
+    fireEvent.keyDown(textarea(), { key: "ArrowRight" })
     textarea().setSelectionRange(4, 4)
     fireEvent.select(textarea())
     expect(textarea().selectionStart).toBe(8)
+  })
+
+  it("jumps over a mention with the arrow keys", async () => {
+    const user = userEvent.setup()
+    render(
+      <MentionTextarea
+        aria-label="Comment"
+        triggers={TRIGGERS}
+        defaultValue="hi @noor ok"
+      />
+    )
+
+    await user.click(textarea())
+    textarea().setSelectionRange(3, 3)
+    fireEvent.select(textarea())
+    await user.keyboard("{ArrowRight}")
+    expect(textarea().selectionStart).toBe(8)
+
+    await user.keyboard("{ArrowLeft}")
+    expect(textarea().selectionStart).toBe(3)
   })
 
   it("leaves Enter to the IME while it is composing", async () => {
@@ -160,7 +187,11 @@ describe("MentionTextarea", () => {
     )
 
     await user.type(textarea(), "@a")
-    expect(await screen.findByText("Loading suggestions")).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Loading suggestions"
+      )
+    )
     await waitFor(() => expect(pending.has("a")).toBe(true))
 
     await user.type(textarea(), "b")
@@ -180,6 +211,38 @@ describe("MentionTextarea", () => {
     expect(textarea()).toHaveValue("")
   })
 
+  it("treats a search that resolves a non-array as failed", async () => {
+    const user = userEvent.setup()
+    render(
+      <MentionTextarea
+        aria-label="Comment"
+        triggers={{
+          "@": (async () => ({ error: "x" })) as unknown as MentionSearch,
+        }}
+        searchDelay={0}
+      />
+    )
+
+    await user.type(textarea(), "@a")
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Couldn't load suggestions"
+      )
+    )
+  })
+
+  it("reopens after Escape once the mention is retyped", async () => {
+    const user = userEvent.setup()
+    render(<MentionTextarea aria-label="Comment" triggers={TRIGGERS} />)
+
+    await user.type(textarea(), "@")
+    await user.keyboard("{Escape}")
+    expect(textarea()).not.toHaveAttribute("aria-controls")
+
+    await user.keyboard("{Backspace}@")
+    expect(textarea()).toHaveAttribute("aria-controls")
+  })
+
   it("says when a search finds nothing or fails", async () => {
     const user = userEvent.setup()
     render(
@@ -196,12 +259,16 @@ describe("MentionTextarea", () => {
     )
 
     await user.type(textarea(), "@z")
-    expect(await screen.findByText("No results")).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("No results")
+    )
 
     await user.clear(textarea())
     await user.type(textarea(), "@x")
-    expect(
-      await screen.findByText("Couldn't load suggestions")
-    ).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Couldn't load suggestions"
+      )
+    )
   })
 })

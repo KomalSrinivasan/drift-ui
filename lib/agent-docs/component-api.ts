@@ -620,21 +620,27 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
     {
       name: "FilterBuilder",
       description:
-        "A row of filter chips with an Add filter menu. Each chip edits its operator and value in place.",
+        "A row of filter chips with AND/OR groups, date fields, and multi-select. Scale limit: up to 3 nested levels and 20 filters recommended in UI.",
       props: [
         {
           name: "fields",
           type: "FilterField[]",
           required: true,
           description:
-            'Filterable fields: { id, label, type: "text" | "number" | "select", options?, icon? }.',
+            'Filterable fields: { id, label, type: "text" | "number" | "select" | "date", options?, icon? }.',
         },
-        STATE_PROPS.value("Filter[]", "filters"),
-        STATE_PROPS.defaultValue("Filter[]", "[]"),
+        STATE_PROPS.value("Filter[] | FilterGroup", "filters"),
+        STATE_PROPS.defaultValue("Filter[] | FilterGroup", "[]"),
         STATE_PROPS.onValueChange(
-          "(filters: Filter[]) => void",
+          "(filters: Filter[] | FilterGroup) => void",
           "when a filter is added, changed or removed"
         ),
+        {
+          name: "allowGroups",
+          type: "boolean",
+          default: "true",
+          description: "Whether users can create nested AND/OR groups.",
+        },
         {
           name: "aria-label",
           type: "string",
@@ -646,10 +652,36 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
     },
     {
       name: "matchesFilter",
-      signature:
-        "matchesFilter(fieldValue: string | number, filter: Filter): boolean",
+      signature: "matchesFilter(fieldValue: unknown, filter: Filter): boolean",
       description:
-        "Import from @/lib/filter to apply a Filter ({ id, fieldId, operator, value }) to your rows. An empty filter value matches everything. Text fields use contains, not-contains, is and is-not, numbers use eq, gt and lt, and selects use is and is-not.",
+        "Import from @/lib/filter to apply a Filter to your rows. Supports text, number, select (including is-any-of and is-none-of), and date fields (before, after, between).",
+    },
+    {
+      name: "matchesFilterGroup",
+      signature:
+        "matchesFilterGroup(item: Record<string, unknown>, group: FilterGroup): boolean",
+      description:
+        "Evaluates a nested FilterGroup with 'and' / 'or' conjunctions against a record.",
+    },
+    {
+      name: "matchesFilters",
+      signature:
+        "matchesFilters(item: Record<string, unknown>, filters: Filter[] | FilterGroup): boolean",
+      description:
+        "Universal evaluator helper accepting either a flat Filter[] or a FilterGroup.",
+    },
+    {
+      name: "serializeFilters",
+      signature: "serializeFilters(filters: Filter[] | FilterGroup): string",
+      description:
+        "Serializes filters or groups into a compact, human-readable, URL-safe string.",
+    },
+    {
+      name: "parseFilters",
+      signature:
+        "parseFilters(query: string, options?: { asGroup?: boolean }): Filter[] | FilterGroup",
+      description:
+        "Parses a DSL string, URL search parameters, or JSON into Filter[] or FilterGroup.",
     },
   ],
   "image-cropper": [

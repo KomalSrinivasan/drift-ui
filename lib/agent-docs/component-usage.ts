@@ -261,21 +261,22 @@ export function AttachmentsField() {
   },
   "filter-builder": {
     notes:
-      "Chip based filters. fields: FilterField[] with { id, label, type: 'text' | 'number' | 'select', options? }. Value is Filter[] ({ id, fieldId, operator, value }). Use matchesFilter(fieldValue, filter) from @/lib/filter to apply filters to your rows.",
+      "Chip based filters with nested AND/OR groups, date fields, multi-select, and URL serialization. fields: FilterField[] with { id, label, type: 'text' | 'number' | 'select' | 'date', options? }. Value is Filter[] or FilterGroup. Use matchesFilters(row, filters) from @/lib/filter. Scale limit: up to 3 nested levels and 20 filters recommended in UI.",
     example: `"use client"
 
 import { useState } from "react"
 import { FilterBuilder } from "@/components/ui/filter-builder"
-import { matchesFilter, type Filter, type FilterField } from "@/lib/filter"
+import { matchesFilters, type Filter, type FilterField, type FilterGroup } from "@/lib/filter"
 
 const fields: FilterField[] = [
   { id: "status", label: "Status", type: "select", options: [{ value: "open", label: "Open" }, { value: "closed", label: "Closed" }] },
   { id: "title", label: "Title", type: "text" },
+  { id: "due", label: "Due date", type: "date" },
 ]
 
-export function IssueFilters({ issues }: { issues: { status: string; title: string }[] }) {
-  const [filters, setFilters] = useState<Filter[]>([])
-  const visible = issues.filter((issue) => filters.every((filter) => matchesFilter(issue[filter.fieldId as "status" | "title"], filter)))
+export function IssueFilters({ issues }: { issues: { status: string; title: string; due?: string }[] }) {
+  const [filters, setFilters] = useState<Filter[] | FilterGroup>([])
+  const visible = issues.filter((issue) => matchesFilters(issue, filters))
 
   return (
     <div className="grid gap-3">

@@ -251,11 +251,12 @@
       "name": "filter-builder",
       "type": "registry:ui",
       "title": "Filter Builder",
-      "description": "Field, operator and value filter chips with a matchesFilter helper for your rows.",
-      "dependencies": ["radix-ui", "lucide-react"],
+      "description": "Field, operator and value filter chips with AND/OR groups, date ranges, multi-select, and URL serialization.",
+      "dependencies": ["radix-ui", "lucide-react", "react-day-picker"],
       "registryDependencies": [
         "utils",
         "button",
+        "calendar",
         "input",
         "popover",
         "@drift-ui/use-controllable-state"

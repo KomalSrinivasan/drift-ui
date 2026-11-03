@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
-import type { FilterField } from "@/registry/default/lib/filter"
+import type { FilterField, FilterGroup } from "@/registry/default/lib/filter"
 import { FilterBuilder } from "@/registry/default/ui/filter-builder"
 
 const FIELDS: FilterField[] = [
@@ -16,6 +16,7 @@ const FIELDS: FilterField[] = [
     ],
   },
   { id: "title", label: "Title", type: "text" },
+  { id: "due", label: "Due", type: "date" },
 ]
 
 function chipTexts() {
@@ -134,5 +135,158 @@ describe("FilterBuilder", () => {
     await user.click(screen.getByRole("menuitem", { name: "is not" }))
 
     expect(chipTexts()).toEqual(["Title is not invoice"])
+  })
+
+  it("supports multi-select with is-any-of", async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <FilterBuilder
+        fields={FIELDS}
+        onValueChange={onValueChange}
+        defaultValue={[
+          {
+            id: "s1",
+            fieldId: "status",
+            operator: "is-any-of",
+            value: ["open"],
+          },
+        ]}
+      />
+    )
+
+    expect(
+      screen.getByRole("button", { name: "Status value: Open" })
+    ).toBeInTheDocument()
+
+    // Click value button to open multi-select popover
+    await user.click(screen.getByRole("button", { name: "Status value: Open" }))
+    const closedOption = screen.getByRole("checkbox", { name: "Closed" })
+    expect(closedOption).toBeInTheDocument()
+    await user.click(closedOption)
+
+    expect(onValueChange).toHaveBeenCalledWith([
+      {
+        id: "s1",
+        fieldId: "status",
+        operator: "is-any-of",
+        value: ["open", "closed"],
+      },
+    ])
+  })
+
+  it("supports date picker for date fields", async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <FilterBuilder
+        fields={FIELDS}
+        onValueChange={onValueChange}
+        defaultValue={[
+          {
+            id: "d1",
+            fieldId: "due",
+            operator: "before",
+            value: "2025-04-15",
+          },
+        ]}
+      />
+    )
+
+    const dateButton = screen.getByRole("button", { name: /Due value:/ })
+    expect(dateButton).toBeInTheDocument()
+    expect(dateButton.textContent).toContain("Apr 15, 2025")
+
+    await user.click(dateButton)
+    expect(document.querySelector("[data-slot=calendar]")).toBeInTheDocument()
+  })
+
+  it("manages nested AND/OR groups and conjunction toggling", async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    const initialGroup: FilterGroup = {
+      id: "root",
+      conjunction: "and",
+      filters: [
+        { id: "1", fieldId: "status", operator: "is", value: "open" },
+        {
+          id: "nested",
+          conjunction: "or",
+          filters: [
+            {
+              id: "2",
+              fieldId: "title",
+              operator: "contains",
+              value: "billing",
+            },
+          ],
+        },
+      ],
+    }
+
+    render(
+      <FilterBuilder
+        fields={FIELDS}
+        value={initialGroup}
+        onValueChange={onValueChange}
+      />
+    )
+
+    // Check root conjunction button
+    const conjunctionBtn = screen.getByRole("button", {
+      name: "Conjunction: AND",
+    })
+    expect(conjunctionBtn).toBeInTheDocument()
+
+    // Toggle conjunction to OR
+    await user.click(conjunctionBtn)
+    expect(onValueChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conjunction: "or",
+      })
+    )
+
+    // Check nested filter group container
+    expect(
+      screen.getByRole("group", { name: "Filter group (OR)" })
+    ).toBeInTheDocument()
+
+    // Remove the nested group
+    const removeGroupBtn = screen.getByRole("button", {
+      name: "Remove filter group",
+    })
+    await user.click(removeGroupBtn)
+
+    expect(onValueChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: [
+          { id: "1", fieldId: "status", operator: "is", value: "open" },
+        ],
+      })
+    )
+  })
+
+  it("adds a group from flat mode using the Add menu", async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(<FilterBuilder fields={FIELDS} onValueChange={onValueChange} />)
+
+    await openAddMenu(user)
+    const addGroupItem = screen.getByRole("menuitem", { name: /Add group/i })
+    expect(addGroupItem).toBeInTheDocument()
+    await user.click(addGroupItem)
+
+    expect(onValueChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "root",
+        conjunction: "and",
+        filters: [
+          expect.objectContaining({
+            conjunction: "and",
+            filters: [],
+          }),
+        ],
+      })
+    )
   })
 })

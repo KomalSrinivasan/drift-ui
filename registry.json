@@ -778,6 +778,28 @@
       ]
     },
     {
+      "name": "timezone-picker",
+      "type": "registry:ui",
+      "title": "Timezone Picker",
+      "description": "Searchable IANA time zone select showing each zone's UTC offset and current local time.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "utils",
+        "popover",
+        "@drift-ui/use-controllable-state"
+      ],
+      "files": [
+        {
+          "path": "registry/default/ui/timezone-picker.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/default/lib/timezone-picker.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "tour",
       "type": "registry:ui",
       "title": "Tour",

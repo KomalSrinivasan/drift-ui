@@ -737,6 +737,20 @@ export function DeployHistory() {
   )
 }`,
   },
+  "timezone-picker": {
+    notes:
+      'TimezonePicker holds an IANA name such as "Asia/Tokyo" through value/defaultValue and onValueChange; an empty string shows the placeholder. The list comes from Intl.supportedValuesOf("timeZone"), sorted by UTC offset, and each row shows the offset and current local time read when the popover opens, so offsets follow daylight saving. Old names that V8 still lists, such as Asia/Calcutta, show under their current names (Asia/Kolkata), and an old name passed as value still marks the right row. Search matches the name with spaces or underscores ("new york" finds America/New_York) and offsets ("+5:30"). timeZones limits the list. It does not default to the browser zone, because the server cannot know it; read Intl.DateTimeFormat().resolvedOptions().timeZone on the client and pass it as value. Remaining props go to the trigger button, so label it with a Label and id or with aria-label.',
+    example: `"use client"
+
+import { useState } from "react"
+import { TimezonePicker } from "@/components/ui/timezone-picker"
+
+export function TimezoneSetting() {
+  const [timeZone, setTimeZone] = useState("Europe/London")
+
+  return <TimezonePicker aria-label="Time zone" value={timeZone} onValueChange={setTimeZone} />
+}`,
+  },
   tour: {
     notes:
       "Wrap the page in Tour with steps: TourStep[] ({ target, title, description?, side? }) and mark elements with TourTarget name matching step.target. open/onOpenChange and step/onStepChange are optional controlled props; onComplete fires after the last step. Focus is trapped in the tour card and returns to the opener on close.",

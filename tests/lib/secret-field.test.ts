@@ -21,4 +21,11 @@ describe("secret-field logic", () => {
     expect(maskSecret("secret", 0)).toBe("••••••••")
     expect(maskSecret("secret", -2)).toBe("••••••••")
   })
+
+  it("never shows the whole value for fractional or non-finite visibleChars", () => {
+    expect(maskSecret("secret", 0.5)).toBe("••••••••")
+    expect(maskSecret("secret", Number.NaN)).toBe("••••••••")
+    expect(maskSecret("secret", Number.POSITIVE_INFINITY)).toBe("••••••••")
+    expect(maskSecret("secret", 2.9)).toBe("••••••••et")
+  })
 })

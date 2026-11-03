@@ -3,8 +3,10 @@ const MASK_CHAR = "•"
 const MASK_LENGTH = 8
 
 export function getVisibleTail(value: string, visibleChars: number) {
-  if (visibleChars <= 0 || value.length <= visibleChars) return ""
-  return value.slice(-visibleChars)
+  const count = Math.floor(visibleChars)
+  // `!(count > 0)` also rejects NaN, which slice would treat as 0 and show the whole value.
+  if (!(count > 0) || value.length <= count) return ""
+  return value.slice(-count)
 }
 
 export function maskSecret(value: string, visibleChars: number) {

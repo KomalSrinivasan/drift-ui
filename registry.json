@@ -457,6 +457,29 @@
       ]
     },
     {
+      "name": "permission-matrix",
+      "type": "registry:ui",
+      "title": "Permission Matrix",
+      "description": "Role and access management grid of roles against permissions, with tri-state group toggles, sticky headers, and inherited permissions.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "utils",
+        "badge",
+        "input",
+        "@drift-ui/use-controllable-state"
+      ],
+      "files": [
+        {
+          "path": "registry/default/ui/permission-matrix.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/default/lib/permission-matrix.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "phone-input",
       "type": "registry:ui",
       "title": "Phone Input",

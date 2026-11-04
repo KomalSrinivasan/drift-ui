@@ -1119,6 +1119,88 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       rest: "<div>",
     },
   ],
+  "permission-matrix": [
+    {
+      name: "PermissionMatrix",
+      description:
+        "A role and access management matrix that maps roles against grouped permissions. Supports tri-state group toggles, recursive role inheritance, sticky headers, and 2D WAI-ARIA grid keyboard navigation.",
+      props: [
+        {
+          name: "allowOverrideInherited",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether inherited permissions can be directly toggled or overridden.",
+        },
+        {
+          name: "defaultExpandedGroups",
+          type: "string[]",
+          description: "IDs of permission groups expanded by default.",
+        },
+        STATE_PROPS.defaultValue("PermissionGrants", "{}"),
+        {
+          name: "disabled",
+          type: "boolean",
+          default: "false",
+          description: "Disables interaction across the entire matrix.",
+        },
+        {
+          name: "expandedGroups",
+          type: "string[]",
+          description:
+            "Controlled array of permission group IDs that are expanded.",
+        },
+        {
+          name: "onExpandedGroupsChange",
+          type: "(groups: string[]) => void",
+          description: "Callback fired when group expansion state changes.",
+        },
+        STATE_PROPS.onValueChange(
+          "(value: PermissionGrants) => void",
+          "when any grant in the matrix is updated"
+        ),
+        {
+          name: "permissions",
+          type: "PermissionGroup[]",
+          required: true,
+          description:
+            "Groups of permission actions displayed in the matrix rows.",
+        },
+        {
+          name: "readOnly",
+          type: "boolean",
+          default: "false",
+          description:
+            "Renders the matrix in read-only audit mode without interactive checkboxes.",
+        },
+        {
+          name: "roles",
+          type: "PermissionRole[]",
+          required: true,
+          description:
+            "Roles displayed across matrix columns, with optional inheritsFrom inheritance.",
+        },
+        {
+          name: "searchPlaceholder",
+          type: "string",
+          default: '"Filter permissions..."',
+          description: "Placeholder text for the search filter input.",
+        },
+        {
+          name: "searchable",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether to show the search input above the matrix to filter permissions.",
+        },
+        STATE_PROPS.value(
+          "PermissionGrants",
+          'Controlled grants mapping role ID to an array of permission IDs. A `"!permissionId"` entry explicitly denies a permission the role would otherwise inherit.'
+        ),
+      ],
+      rest: "<div>",
+    },
+  ],
   "phone-input": [
     {
       name: "PhoneInput",

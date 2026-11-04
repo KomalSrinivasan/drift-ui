@@ -445,6 +445,49 @@ export function NewPasswordField() {
   )
 }`,
   },
+  "permission-matrix": {
+    notes:
+      "PermissionMatrix maps roles against action permission groups for role-based access control (RBAC). It supports controlled and uncontrolled grants via value/defaultValue and onValueChange (Record<string, string[]> mapping roleId to permissionId[]). Roles support recursive inheritance with inheritsFrom; inherited permissions are highlighted with distinct styling and tooltips. Each group header row features a tri-state checkbox per role reflecting whether all, some, or none of its actions are granted. Sticky headers keep role columns and permission row headers visible during scroll. Fully navigable as a WAI-ARIA grid using Arrow keys, Home, End, PageUp, and PageDown.",
+    example: `"use client"
+
+import * as React from "react"
+import { PermissionMatrix } from "@/components/ui/permission-matrix"
+
+const ROLES = [
+  { id: "viewer", name: "Viewer" },
+  { id: "editor", name: "Editor", inheritsFrom: "viewer" },
+  { id: "admin", name: "Admin", inheritsFrom: "editor" },
+]
+
+const PERMISSIONS = [
+  {
+    id: "docs",
+    name: "Documents",
+    permissions: [
+      { id: "docs.read", name: "Read" },
+      { id: "docs.write", name: "Write" },
+      { id: "docs.delete", name: "Delete" },
+    ],
+  },
+]
+
+export function AccessSettings() {
+  const [grants, setGrants] = React.useState({
+    viewer: ["docs.read"],
+    editor: ["docs.write"],
+    admin: ["docs.delete"],
+  })
+
+  return (
+    <PermissionMatrix
+      roles={ROLES}
+      permissions={PERMISSIONS}
+      value={grants}
+      onValueChange={setGrants}
+    />
+  )
+}`,
+  },
   "phone-input": {
     notes:
       'PhoneInput stores an E.164 string through value/defaultValue and onValueChange, and shows the number without its dial code next to a searchable country picker. defaultCountry (default "US") applies until the value identifies a country. While the user types, the value is the partial number so far, such as "+1415", so validate on submit with isValidPhoneNumber from libphonenumber-js. Typing a leading + switches country from the digits, and a pasted or autofilled +number also moves the dial code out of the field. Changing country keeps the national digits. countries limits the list and accepts codes or { code, name, flag } objects, in display order; excludedCountries removes entries. Both also block numbers from other countries, typed or pasted. Remaining props go to the tel input, so pass id or aria-label there; name submits the E.164 value through a hidden input. Flags are emoji, which Windows browsers show as two letters, so pass flag in countries to use images. Installs libphonenumber-js, about 36 KB gzipped.',

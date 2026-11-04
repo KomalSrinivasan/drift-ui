@@ -83,6 +83,7 @@ const ENTRY_LAYOUT: {
   { slug: "stepper", category: "structure" },
   { slug: "timeline", category: "structure" },
   { slug: "tree-view", category: "structure" },
+  { slug: "uptime-bar", category: "structure" },
   { slug: "virtual-list", category: "structure" },
   {
     slug: "bulk-action-bar",

@@ -852,6 +852,20 @@ export function ProjectTree() {
   return <TreeView aria-label="Project files" items={items} defaultExpanded={["app"]} />
 }`,
   },
+  "uptime-bar": {
+    notes:
+      "Renders daily service health segments with overall uptime percentage, single tab stop roving keyboard navigation, and popover day details. Days with no data do not count against uptime. Degraded days count as partial uptime via degradedWeight (default 0.5). Arrow keys (ArrowLeft, ArrowRight, Home, End) move focus between segments, and Enter or Space opens the Popover. Theme tokens bg-chart-2 (operational), bg-chart-5 (degraded), bg-destructive (down), and bg-muted (no-data) provide color coding.",
+    example: `import { UptimeBar } from "@/components/ui/uptime-bar"
+
+const days = [
+  { date: "2026-10-30", status: "operational" as const },
+  { date: "2026-10-31", status: "degraded" as const, note: "Elevated API latency" },
+]
+
+export function ServiceHealth() {
+  return <UptimeBar title="API" days={days} />
+}`,
+  },
   "use-controllable-state": {
     notes:
       "Hook shared by several components to support both controlled (value + onValueChange) and uncontrolled (defaultValue) use. Installed automatically as a dependency.",

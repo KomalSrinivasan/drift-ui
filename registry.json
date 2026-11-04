@@ -891,6 +891,29 @@
       ]
     },
     {
+      "name": "uptime-bar",
+      "type": "registry:ui",
+      "title": "Uptime Bar",
+      "description": "Daily service health segments with uptime percentage, accessible labels and popover details.",
+      "dependencies": [],
+      "registryDependencies": [
+        "badge",
+        "popover",
+        "utils",
+        "@drift-ui/use-controllable-state"
+      ],
+      "files": [
+        {
+          "path": "registry/default/ui/uptime-bar.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/default/lib/uptime-bar.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "use-controllable-state",
       "type": "registry:hook",
       "title": "useControllableState",

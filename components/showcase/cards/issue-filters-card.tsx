@@ -112,6 +112,7 @@ export function IssueFiltersCard() {
           fields={FIELDS}
           value={filters}
           onValueChange={setFilters}
+          allowGroups={false}
         />
         <ul className="divide-y rounded-md border text-sm">
           {visibleIssues.map((issue) => (

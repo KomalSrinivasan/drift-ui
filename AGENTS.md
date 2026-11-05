@@ -79,6 +79,7 @@ For a new component, follow every step of [Adding a component](CONTRIBUTING.md#a
 4. Category in `lib/catalog.ts`
 5. Usage notes and snippet in `lib/agent-docs/component-usage.ts`, prop reference in `lib/agent-docs/component-api.ts`, and at least one example in `components/preview/examples/<name>/`
 6. Tests in `tests/ui/<name>.test.tsx`, plus `tests/lib/<name>.test.ts` for lib code, covering keyboard interaction
+7. A link in the README component table, at its catalog position, with the count updated
 
 Insert at the alphabetical position in `registry.json`, `lib/catalog.ts` (within the category), `component-usage.ts` and `component-api.ts`, never at the end. Appending is what makes pull requests conflict, and `tests/lib/sorted-lists.test.ts` fails if a list is out of order. If a conflict still happens, keep both entries.
 

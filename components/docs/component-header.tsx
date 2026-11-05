@@ -7,6 +7,7 @@ import {
   registryItemPath,
   type PrimitiveLibrary,
 } from "@/lib/primitive-library"
+import { siteConfig } from "@/lib/site-config"
 
 export function ComponentHeader({
   entry,
@@ -19,6 +20,8 @@ export function ComponentHeader({
 }) {
   const category = findCategory(entry.category)
   const position = CATALOG.indexOf(entry) + 1
+  const registryPath = registryItemPath(entry.slug, library)
+  const v0Url = `https://v0.app/chat/api/open?url=${encodeURIComponent(`${siteConfig.url}${registryPath}`)}`
 
   return (
     <header className="flex flex-col gap-5">
@@ -45,7 +48,7 @@ export function ComponentHeader({
         <code className="text-foreground">@drift-ui/{entry.slug}</code>
         {entry.category === "primitives" && <span>Same API as shadcn/ui</span>}
         <a
-          href={registryItemPath(entry.slug, library)}
+          href={registryPath}
           className="flex items-center gap-1 transition-colors hover:text-foreground"
         >
           Registry JSON
@@ -58,6 +61,15 @@ export function ComponentHeader({
           className="flex items-center gap-1 transition-colors hover:text-foreground"
         >
           View on GitHub
+          <ArrowUpRightIcon className="size-3" />
+        </a>
+        <a
+          href={v0Url}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1 transition-colors hover:text-foreground"
+        >
+          Open in v0
           <ArrowUpRightIcon className="size-3" />
         </a>
       </div>

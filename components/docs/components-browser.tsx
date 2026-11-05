@@ -140,7 +140,7 @@ export function ComponentsBrowser({
             value={activeCategory}
             onValueChange={(next) => setFilters({ ...filters, category: next })}
             label="Filter by category"
-            className="-mx-1 [scrollbar-width:none] overflow-x-auto px-1 max-sm:justify-between max-sm:[&>button]:px-2"
+            className="-mx-1 scrollbar-none overflow-x-auto px-1 max-sm:justify-between max-sm:[&>button]:px-2"
           />
         </div>
       </div>
@@ -221,7 +221,7 @@ export function ComponentsBrowser({
                             >
                               {padNumber(cards.indexOf(card) + 1)}
                             </span>
-                            <span className="font-display text-2xl font-semibold tracking-[-0.035em] lg:text-foreground/45 transition-colors group-hover/row:text-foreground group-data-shown/row:text-foreground">
+                            <span className="font-display text-2xl font-semibold tracking-[-0.035em] transition-colors group-hover/row:text-foreground group-data-shown/row:text-foreground lg:text-foreground/45">
                               {card.name}
                             </span>
                             {card.isFlagship && (

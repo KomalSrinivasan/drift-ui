@@ -29,16 +29,23 @@ import {
   deleteSavedView,
   duplicateSavedView,
   getActiveSavedView,
+  isViewDirty,
   renameSavedView,
+  restoreSavedView,
   setDefaultSavedView,
   type SavedView,
 } from "@/registry/default/lib/saved-views"
 
 export type { SavedView }
 
+export type SavedViewAction =
+  "create" | "rename" | "duplicate" | "delete" | "setDefault" | "save"
+
+type MaybePromise = void | PromiseLike<unknown>
+
 export interface SavedViewsProps<T = unknown> extends Omit<
   React.ComponentProps<"div">,
-  "defaultValue" | "onReset"
+  "defaultValue" | "onReset" | "onError"
 > {
   views?: SavedView<T>[]
   defaultViews?: SavedView<T>[]
@@ -49,16 +56,21 @@ export interface SavedViewsProps<T = unknown> extends Omit<
   onActiveChange?: (activeId: string) => void
 
   currentData?: T
+  isEqual?: (saved: T, current: T) => boolean
 
   isDirty?: boolean
-  onSave?: (view: SavedView<T>) => void
+  onSave?: (view: SavedView<T>) => MaybePromise
   onReset?: (view: SavedView<T>) => void
 
-  onCreate?: (view: SavedView<T>) => void
-  onRename?: (view: SavedView<T>, newName: string) => void
-  onDuplicate?: (newView: SavedView<T>, sourceView: SavedView<T>) => void
-  onDelete?: (deletedViewId: string) => void
-  onSetDefault?: (defaultViewId: string) => void
+  onCreate?: (view: SavedView<T>) => MaybePromise
+  onRename?: (view: SavedView<T>, newName: string) => MaybePromise
+  onDuplicate?: (
+    newView: SavedView<T>,
+    sourceView: SavedView<T>
+  ) => MaybePromise
+  onDelete?: (deletedViewId: string) => MaybePromise
+  onSetDefault?: (defaultViewId: string) => MaybePromise
+  onError?: (error: unknown, action: SavedViewAction) => void
 
   variant?: "tabs" | "select"
   showReset?: boolean
@@ -79,7 +91,8 @@ function SavedViews<T = unknown>({
   defaultActiveId,
   onActiveChange,
   currentData,
-  isDirty = false,
+  isEqual,
+  isDirty: isDirtyProp,
   onSave,
   onReset,
   onCreate,
@@ -87,6 +100,7 @@ function SavedViews<T = unknown>({
   onDuplicate,
   onDelete,
   onSetDefault,
+  onError,
   variant = "tabs",
   showReset = true,
   allowCreate = true,
@@ -125,6 +139,82 @@ function SavedViews<T = unknown>({
     [views, activeId]
   )
 
+  const isDirty = React.useMemo(
+    () => isDirtyProp ?? isViewDirty(activeView, currentData, isEqual),
+    [isDirtyProp, activeView, currentData, isEqual]
+  )
+
+  const viewsRef = React.useRef(views)
+  const activeIdRef = React.useRef(activeId)
+  const settersRef = React.useRef({ setViews, setActiveId })
+  React.useLayoutEffect(() => {
+    viewsRef.current = views
+    activeIdRef.current = activeId
+    settersRef.current = { setViews, setActiveId }
+  })
+
+  const [pending, setPending] = React.useState<
+    ReadonlyMap<string, SavedViewAction>
+  >(() => new Map())
+  const [failure, setFailure] = React.useState<string | null>(null)
+  const isActivePending = activeView ? pending.has(activeView.id) : false
+  const isDefaultPending = [...pending.values()].includes("setDefault")
+
+  function canDelete(id: string) {
+    return views.some((v) => {
+      const action = pending.get(v.id)
+      return v.id !== id && action !== "create" && action !== "duplicate"
+    })
+  }
+
+  function applyViews(next: SavedView<T>[]) {
+    viewsRef.current = next
+    settersRef.current.setViews(next)
+  }
+
+  function applyActive(id: string) {
+    activeIdRef.current = id
+    settersRef.current.setActiveId(id)
+  }
+
+  function track(
+    persist: () => MaybePromise,
+    {
+      action,
+      viewId,
+      message,
+      revert,
+    }: {
+      action: SavedViewAction
+      viewId: string
+      message: string
+      revert: () => boolean
+    }
+  ) {
+    setFailure(null)
+    let result: MaybePromise
+    try {
+      result = persist()
+    } catch (error) {
+      result = Promise.reject(error)
+    }
+    if (!result || typeof result.then !== "function") return
+    setPending((prev) => new Map(prev).set(viewId, action))
+    const settle = () =>
+      setPending((prev) => {
+        const next = new Map(prev)
+        next.delete(viewId)
+        return next
+      })
+    result.then(settle, (error: unknown) => {
+      settle()
+      const undone = revert()
+      setFailure(undone ? `${message} The change was undone.` : message)
+      if (onError) onError(error, action)
+      else console.error(error)
+    })
+  }
+
   const [createOpen, setCreateOpen] = React.useState(false)
   const [selectOpen, setSelectOpen] = React.useState(false)
   const [newViewName, setNewViewName] = React.useState("")
@@ -149,16 +239,43 @@ function SavedViews<T = unknown>({
     e?.preventDefault()
     const name = newViewName.trim() || `View ${views.length + 1}`
     const newView = createSavedView<T>(name, { data: currentData })
-    const nextViews = [...views, newView]
-    setViews(nextViews)
-    setActiveId(newView.id)
-    onCreate?.(newView)
+    addView(newView, "create", `Couldn't create "${newView.name}".`, () =>
+      onCreate?.(newView)
+    )
     setNewViewName("")
     setCreateOpen(false)
     setSelectOpen(false)
   }
 
+  function addView(
+    newView: SavedView<T>,
+    action: "create" | "duplicate",
+    message: string,
+    persist: () => MaybePromise
+  ) {
+    const previousActiveId = activeIdRef.current
+    applyViews([...views, newView])
+    applyActive(newView.id)
+    track(persist, {
+      action,
+      viewId: newView.id,
+      message,
+      revert: () => {
+        const current = viewsRef.current
+        const reverted = current.filter((v) => v.id !== newView.id)
+        if (reverted.length === current.length) return false
+        applyViews(reverted)
+        if (activeIdRef.current === newView.id) {
+          const fallback = getActiveSavedView(reverted, previousActiveId)
+          if (fallback) applyActive(fallback.id)
+        }
+        return true
+      },
+    })
+  }
+
   function handleStartRename(view: SavedView<T>) {
+    if (pending.has(view.id)) return
     setEditingId(view.id)
     setEditingName(view.name)
   }
@@ -166,42 +283,110 @@ function SavedViews<T = unknown>({
   function handleRenameSubmit(id: string) {
     const trimmed = editingName.trim()
     const target = views.find((v) => v.id === id)
-    if (trimmed && target && trimmed !== target.name) {
-      const nextViews = renameSavedView(views, id, trimmed)
-      setViews(nextViews)
-      onRename?.({ ...target, name: trimmed }, trimmed)
-    }
     setEditingId(null)
+    if (!trimmed || !target || trimmed === target.name) return
+    applyViews(renameSavedView(views, id, trimmed))
+    track(() => onRename?.({ ...target, name: trimmed }, trimmed), {
+      action: "rename",
+      viewId: id,
+      message: `Couldn't rename "${target.name}".`,
+      revert: () => {
+        const current = viewsRef.current
+        if (!current.some((v) => v.id === id)) return false
+        applyViews(
+          current.map((v) => (v.id === id ? { ...v, name: target.name } : v))
+        )
+        return true
+      },
+    })
   }
 
   function handleDuplicate(view: SavedView<T>) {
+    if (pending.has(view.id)) return
     const duplicated = duplicateSavedView(view, views)
-    const nextViews = [...views, duplicated]
-    setViews(nextViews)
-    setActiveId(duplicated.id)
-    onDuplicate?.(duplicated, view)
+    addView(duplicated, "duplicate", `Couldn't duplicate "${view.name}".`, () =>
+      onDuplicate?.(duplicated, view)
+    )
   }
 
   function handleDelete(id: string) {
-    if (views.length <= 1) return
-    const target = views.find((v) => v.id === id)
-    if (target?.isLocked) return
+    if (!canDelete(id) || pending.has(id)) return
+    const index = views.findIndex((v) => v.id === id)
+    const target = views[index]
+    if (!target || target.isLocked) return
+    const wasActive = activeView?.id === id
     const { views: nextViews, nextActiveId } = deleteSavedView(
       views,
       id,
-      activeId
+      activeView?.id
     )
-    setViews(nextViews)
-    if (nextActiveId) {
-      setActiveId(nextActiveId)
-    }
-    onDelete?.(id)
+    applyViews(nextViews)
+    if (wasActive && nextActiveId) applyActive(nextActiveId)
+    track(() => onDelete?.(id), {
+      action: "delete",
+      viewId: id,
+      message: `Couldn't delete "${target.name}".`,
+      revert: () => {
+        const current = viewsRef.current
+        const restored = restoreSavedView(current, target, index)
+        if (restored === current) return false
+        applyViews(restored)
+        if (wasActive && activeIdRef.current === nextActiveId) applyActive(id)
+        return true
+      },
+    })
   }
 
   function handleSetDefault(id: string) {
-    const nextViews = setDefaultSavedView(views, id)
-    setViews(nextViews)
-    onSetDefault?.(id)
+    const target = views.find((v) => v.id === id)
+    if (!target || isDefaultPending) return
+    const previousDefaultId = views.find((v) => v.isDefault)?.id
+    applyViews(setDefaultSavedView(views, id))
+    track(() => onSetDefault?.(id), {
+      action: "setDefault",
+      viewId: id,
+      message: `Couldn't make "${target.name}" the default.`,
+      revert: () => {
+        const current = viewsRef.current
+        if (current.find((v) => v.isDefault)?.id !== id) return false
+        applyViews(
+          current.map((v) => ({ ...v, isDefault: v.id === previousDefaultId }))
+        )
+        return true
+      },
+    })
+  }
+
+  function handleSave() {
+    if (!activeView || isActivePending) return
+    const previousData = activeView.data
+    const toSave =
+      currentData !== undefined
+        ? { ...activeView, data: currentData }
+        : activeView
+    if (currentData !== undefined) {
+      applyViews(views.map((v) => (v.id === activeView.id ? toSave : v)))
+    }
+    track(() => onSave?.(toSave), {
+      action: "save",
+      viewId: activeView.id,
+      message: `Couldn't save "${activeView.name}".`,
+      revert: () => {
+        const current = viewsRef.current
+        if (
+          currentData === undefined ||
+          !current.some((v) => v.id === toSave.id)
+        ) {
+          return false
+        }
+        applyViews(
+          current.map((v) =>
+            v.id === toSave.id ? { ...v, data: previousData } : v
+          )
+        )
+        return true
+      },
+    })
   }
 
   function handleTabKeyDown(
@@ -274,20 +459,32 @@ function SavedViews<T = unknown>({
       <Button
         type="button"
         size="sm"
-        className="h-8 gap-1 px-2.5 text-xs shadow-xs"
-        onClick={() => {
-          const toSave =
-            currentData !== undefined
-              ? { ...activeView, data: currentData }
-              : activeView
-          if (currentData !== undefined) {
-            setViews(views.map((v) => (v.id === activeView.id ? toSave : v)))
-          }
-          onSave?.(toSave)
-        }}
+        className="h-8 gap-1 px-2.5 text-xs shadow-xs aria-disabled:opacity-50 motion-safe:aria-busy:animate-pulse"
+        aria-disabled={isActivePending || undefined}
+        aria-busy={isActivePending || undefined}
+        onClick={handleSave}
       >
         <SaveIcon className="size-3.5" />
         Save
+      </Button>
+    </div>
+  )
+
+  const failureMessage = failure && (
+    <div
+      data-slot="saved-views-error"
+      role="alert"
+      className="flex basis-full items-center gap-2 text-xs text-destructive"
+    >
+      <span>{failure}</span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-6 px-1.5 text-xs"
+        onClick={() => setFailure(null)}
+      >
+        Dismiss
       </Button>
     </div>
   )
@@ -361,8 +558,10 @@ function SavedViews<T = unknown>({
                     key={view.id}
                     role="option"
                     aria-selected={isActive}
+                    aria-busy={pending.has(view.id) || undefined}
+                    data-pending={pending.has(view.id) || undefined}
                     className={cn(
-                      "group flex items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground",
+                      "group flex items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground data-pending:opacity-60 motion-safe:data-pending:animate-pulse",
                       isActive && "bg-accent/60 font-medium"
                     )}
                   >
@@ -393,10 +592,11 @@ function SavedViews<T = unknown>({
                       allowDelete) && (
                       <ViewOptionsMenu
                         view={view}
-                        isOnlyView={views.length <= 1}
+                        isOnlyView={!canDelete(view.id)}
+                        isPending={pending.has(view.id)}
                         allowRename={allowRename}
                         allowDuplicate={allowDuplicate}
-                        allowSetDefault={allowSetDefault}
+                        allowSetDefault={allowSetDefault && !isDefaultPending}
                         allowDelete={allowDelete}
                         onStartRename={() => handleStartRename(view)}
                         onDuplicate={() => handleDuplicate(view)}
@@ -439,6 +639,7 @@ function SavedViews<T = unknown>({
         </Popover>
 
         {dirtyActions}
+        {failureMessage}
       </div>
     )
   }
@@ -471,6 +672,8 @@ function SavedViews<T = unknown>({
                 role="tab"
                 type="button"
                 aria-selected={isActive}
+                aria-busy={pending.has(view.id) || undefined}
+                data-pending={pending.has(view.id) || undefined}
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => handleSelect(view.id)}
                 onDoubleClick={() => {
@@ -480,7 +683,7 @@ function SavedViews<T = unknown>({
                 }}
                 onKeyDown={(e) => handleTabKeyDown(e, index, view)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring data-pending:opacity-60 motion-safe:data-pending:animate-pulse",
                   isActive
                     ? "bg-background text-foreground shadow-xs"
                     : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
@@ -534,10 +737,11 @@ function SavedViews<T = unknown>({
           !editingId && (
             <ViewOptionsMenu
               view={activeView}
-              isOnlyView={views.length <= 1}
+              isOnlyView={!canDelete(activeView.id)}
+              isPending={isActivePending}
               allowRename={allowRename}
               allowDuplicate={allowDuplicate}
-              allowSetDefault={allowSetDefault}
+              allowSetDefault={allowSetDefault && !isDefaultPending}
               allowDelete={allowDelete}
               onStartRename={() => handleStartRename(activeView)}
               onDuplicate={() => handleDuplicate(activeView)}
@@ -596,6 +800,7 @@ function SavedViews<T = unknown>({
       </div>
 
       {dirtyActions}
+      {failureMessage}
     </div>
   )
 }
@@ -603,6 +808,7 @@ function SavedViews<T = unknown>({
 function ViewOptionsMenu({
   view,
   isOnlyView,
+  isPending,
   allowRename,
   allowDuplicate,
   allowSetDefault,
@@ -614,6 +820,7 @@ function ViewOptionsMenu({
 }: {
   view: SavedView
   isOnlyView: boolean
+  isPending: boolean
   allowRename: boolean
   allowDuplicate: boolean
   allowSetDefault: boolean
@@ -722,14 +929,18 @@ function ViewOptionsMenu({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open && !isPending}
+      onOpenChange={(next) => setOpen(next && !isPending)}
+    >
       <PopoverTrigger
         ref={triggerRef}
         type="button"
         aria-haspopup="menu"
-        aria-expanded={open}
+        aria-expanded={open && !isPending}
+        aria-disabled={isPending || undefined}
         aria-label={`Options for ${view.name}`}
-        className="flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-opacity outline-none hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring"
+        className="flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-opacity outline-none hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring aria-disabled:opacity-40"
       >
         <MoreHorizontalIcon className="size-3.5" />
       </PopoverTrigger>

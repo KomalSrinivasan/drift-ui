@@ -625,32 +625,65 @@ export function StandupRepeat({ start }: { start: Date }) {
   },
   "saved-views": {
     notes:
-      "SavedViews manages named combinations of filters, sorting and columns on table and list screens. For views that store configuration data, manage views and onViewsChange in controlled state, or pass currentData to attach to newly created views; data must be serializable if using duplicate. When isDirty is true, an unsaved indicator appears and Save/Discard buttons show up. Context menu on each view supports Rename (also accessible via F2 or double click), Duplicate, Set as default, and Delete (with safety guards against deleting the last view or locked views). Add button (+) creates a new view. Set variant='select' for a compact dropdown view switcher. Pure helpers live in @/lib/saved-views: createSavedView, duplicateSavedView, renameSavedView, deleteSavedView, and setDefaultSavedView. Installs button, input, badge, and popover.",
+      "SavedViews manages named combinations of filters, sorting and columns on table and list screens. View data should be structured-cloneable, since Duplicate copies it with structuredClone. Pass currentData and the component works out isDirty by comparing it with the active view's data: plain objects compare deeply with key order and undefined fields ignored, arrays keep their order, dates compare by time, regular expressions compare by source and flags, Set members and Map values compare deeply, Map keys compare by identity, and cyclic data is safe. A view with no data is never dirty. Other class instances, such as Temporal or URL objects, need an isEqual of your own. Pass isEqual to change the rule (for filter-builder data, compare serializeFilters output so filter ids don't count), or pass isDirty to override it, which also skips the compare. Save writes currentData to the active view; Discard calls onReset so you can restore view.data. To keep the active view in the URL, pass activeId={readViewParam(searchParams, views)} and write it in onActiveChange with writeViewParam(searchParams, id). A missing or unknown id resolves to the current default view, or the first view when none is the default. Because the active view can change without onActiveChange (browser back and forward, or a new default while the URL has no param), derive the working data from activeId as the example does rather than setting it only in onActiveChange. The component itself has no router code. For server storage, return a Promise (or any thenable) from onCreate, onRename, onDuplicate, onDelete, onSetDefault or onSave. The change shows at once and the view is marked aria-busy, its options menu and rename are blocked until the request settles, and a rejected Promise (or a callback that throws) undoes only that change, shows an inline role=alert message and calls onError(error, action), or logs the error with console.error when there is no onError. Only one set default request runs at a time. Rename works with F2 or double click; delete is blocked for locked views and for the last view that is not still being created. variant='select' gives a compact dropdown. Scale limit, measured in Chrome on a dev build at 4x CPU throttle: moving between tabs takes about 60 ms with 100 views, 115 ms with 200 and 230 ms with 500, and comparing currentData with 2,000 filters takes about 2.5 ms. Keep lists to about 100 views. Pure helpers live in @/lib/saved-views. Installs button, input, badge, and popover.",
     example: `"use client"
 
 import { useState } from "react"
+import { readViewParam, writeViewParam } from "@/lib/saved-views"
 import { SavedViews, type SavedView } from "@/components/ui/saved-views"
 
-const INITIAL_VIEWS: SavedView<{ status: string }>[] = [
-  { id: "all", name: "All Issues", isDefault: true, data: { status: "all" } },
-  { id: "active", name: "Active Sprint", data: { status: "active" } },
-]
+type Filters = { status: string }
 
-export function IssueViewSwitcher() {
-  const [views, setViews] = useState(INITIAL_VIEWS)
-  const [activeId, setActiveId] = useState("all")
-  const [isDirty, setIsDirty] = useState(false)
+const EMPTY: Filters = { status: "all" }
+
+export function IssueViewSwitcher({
+  initialViews,
+  search,
+  onSearchChange,
+}: {
+  initialViews: SavedView<Filters>[]
+  search: string
+  onSearchChange: (search: string) => void
+}) {
+  const [views, setViews] = useState(initialViews)
+  const activeId = readViewParam(search, views)
+  const activeView = views.find((view) => view.id === activeId)
+  const [draft, setDraft] = useState<{ viewId?: string; filters: Filters }>()
+  const filters =
+    draft && draft.viewId === activeId
+      ? draft.filters
+      : (activeView?.data ?? EMPTY)
 
   return (
-    <SavedViews
-      views={views}
-      onViewsChange={setViews}
-      activeId={activeId}
-      onActiveChange={setActiveId}
-      isDirty={isDirty}
-      onSave={(view) => setIsDirty(false)}
-      onReset={(view) => setIsDirty(false)}
-    />
+    <div className="flex flex-col gap-3">
+      <SavedViews
+        views={views}
+        onViewsChange={setViews}
+        activeId={activeId}
+        onActiveChange={(id) => onSearchChange(writeViewParam(search, id))}
+        currentData={filters}
+        onReset={() => setDraft(undefined)}
+        onSave={(view) =>
+          fetch(\`/api/views/\${view.id}\`, {
+            method: "PUT",
+            body: JSON.stringify(view),
+          }).then((res) => {
+            if (!res.ok) throw new Error("Save failed")
+          })
+        }
+      />
+      <select
+        aria-label="Status"
+        value={filters.status}
+        onChange={(event) =>
+          setDraft({ viewId: activeId, filters: { status: event.target.value } })
+        }
+      >
+        <option value="all">All</option>
+        <option value="open">Open</option>
+        <option value="closed">Closed</option>
+      </select>
+    </div>
   )
 }`,
   },

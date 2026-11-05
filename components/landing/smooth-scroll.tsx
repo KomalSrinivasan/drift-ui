@@ -7,7 +7,7 @@ import { useReducedMotion } from "motion/react"
 
 const LENIS_OPTIONS = {
   lerp: 0.1,
-  anchors: { offset: -72 },
+  anchors: true,
   allowNestedScroll: true,
 }
 

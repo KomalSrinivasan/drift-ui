@@ -13,6 +13,7 @@ export type CatalogEntry = {
   registryDependencies: string[]
   files: RegistryFile[]
   stageClassName?: string
+  isFlagship?: boolean
 }
 
 type RegistryItem = (typeof registry.items)[number] & {
@@ -53,9 +54,10 @@ const ENTRY_LAYOUT: {
   slug: string
   category: CategoryId
   stageClassName?: string
+  isFlagship?: boolean
 }[] = [
   { slug: "color-picker", category: "inputs" },
-  { slug: "date-time-range", category: "inputs" },
+  { slug: "date-time-range", category: "inputs", isFlagship: true },
   { slug: "duration-input", category: "inputs" },
   { slug: "emoji-picker", category: "inputs" },
   { slug: "file-dropzone", category: "inputs" },
@@ -68,7 +70,7 @@ const ENTRY_LAYOUT: {
   { slug: "password-input", category: "inputs" },
   { slug: "phone-input", category: "inputs" },
   { slug: "rating", category: "inputs" },
-  { slug: "recurrence-editor", category: "inputs" },
+  { slug: "recurrence-editor", category: "inputs", isFlagship: true },
   { slug: "secret-field", category: "inputs" },
   { slug: "shortcut-recorder", category: "inputs", stageClassName: "gap-8" },
   { slug: "signature-pad", category: "inputs" },
@@ -82,7 +84,7 @@ const ENTRY_LAYOUT: {
   { slug: "sortable-list", category: "structure" },
   { slug: "stepper", category: "structure" },
   { slug: "timeline", category: "structure" },
-  { slug: "tree-view", category: "structure" },
+  { slug: "tree-view", category: "structure", isFlagship: true },
   { slug: "uptime-bar", category: "structure" },
   { slug: "virtual-list", category: "structure" },
   {
@@ -95,6 +97,7 @@ const ENTRY_LAYOUT: {
   {
     slug: "filter-builder",
     category: "workflow",
+    isFlagship: true,
     stageClassName: "flex-col flex-nowrap items-stretch justify-start",
   },
   { slug: "notification-inbox", category: "workflow" },
@@ -103,7 +106,7 @@ const ENTRY_LAYOUT: {
     category: "workflow",
     stageClassName: "flex-col flex-nowrap items-stretch",
   },
-  { slug: "saved-views", category: "workflow" },
+  { slug: "saved-views", category: "workflow", isFlagship: true },
   { slug: "shortcut-cheatsheet", category: "workflow" },
   {
     slug: "tour",

@@ -377,6 +377,28 @@ export function WebhookPayload({ payload }: { payload: unknown }) {
   )
 }`,
   },
+  "key-value-editor": {
+    notes:
+      "Rows of key and value for env vars, HTTP headers, query params or metadata. Each row is { id, key, value }; value/defaultValue/onValueChange hold the array. Enter in the last row adds a row and focuses its key, Enter elsewhere moves to the next row's key. Pasting text that contains KEY=value into a key field splits it into rows: comments, blank lines, an export prefix, quoted values and = inside a value are handled, multi-line values are not. Keys used more than once (after trimming) are marked aria-invalid with a Duplicate key message. secretValues masks every value with password-input, each with its own reveal button. Inputs are labelled Key 1, Value 1 and Remove row 1; rename with keyLabel and valueLabel. Pass aria-label to name the group.",
+    example: `import { KeyValueEditor, type KeyValueRow } from "@/components/ui/key-value-editor"
+
+export function EnvVars({
+  rows,
+  onRowsChange,
+}: {
+  rows: KeyValueRow[]
+  onRowsChange: (rows: KeyValueRow[]) => void
+}) {
+  return (
+    <KeyValueEditor
+      aria-label="Environment variables"
+      value={rows}
+      onValueChange={onRowsChange}
+      secretValues
+    />
+  )
+}`,
+  },
   label: {
     notes: SAME_AS_SHADCN,
     example: `import { Input } from "@/components/ui/input"

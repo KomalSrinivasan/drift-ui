@@ -1086,6 +1086,67 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       rest: "<div>",
     },
   ],
+  "key-value-editor": [
+    {
+      name: "KeyValueEditor",
+      description:
+        "Editable rows of key and value. Pasting KEY=value text into a key splits it into rows, and duplicate keys are flagged.",
+      props: [
+        STATE_PROPS.value("KeyValueRow[]", "rows of { id, key, value }"),
+        STATE_PROPS.defaultValue("KeyValueRow[]", "[]"),
+        STATE_PROPS.onValueChange(
+          "(rows: KeyValueRow[]) => void",
+          "with the new rows after any edit, paste, add or remove"
+        ),
+        {
+          name: "secretValues",
+          type: "boolean",
+          default: "false",
+          description:
+            "Mask every value with a password input that has its own reveal button.",
+        },
+        {
+          name: "keyLabel",
+          type: "string",
+          default: '"Key"',
+          description:
+            "Column heading and the start of each key input's label.",
+        },
+        {
+          name: "valueLabel",
+          type: "string",
+          default: '"Value"',
+          description:
+            "Column heading and the start of each value input's label.",
+        },
+        {
+          name: "keyPlaceholder",
+          type: "string",
+          default: '"KEY"',
+          description: "Placeholder for key inputs.",
+        },
+        {
+          name: "valuePlaceholder",
+          type: "string",
+          default: '"Value"',
+          description: "Placeholder for value inputs.",
+        },
+        {
+          name: "addLabel",
+          type: "string",
+          default: '"Add row"',
+          description: "Text of the add button.",
+        },
+        {
+          name: "disabled",
+          type: "boolean",
+          default: "false",
+          description: "Disable every input and button.",
+        },
+      ],
+      rest: "<div>",
+    },
+  ],
   label: [
     {
       name: "Label",

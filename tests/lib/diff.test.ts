@@ -19,6 +19,7 @@ function applyEdits(
   let oldIndex = 0
   let newIndex = 0
   for (const edit of edits) {
+    if (edit === "equal") expect(oldItems[oldIndex]).toBe(newItems[newIndex])
     if (edit !== "add") rebuiltOld.push(oldItems[oldIndex++])
     if (edit !== "remove") rebuiltNew.push(newItems[newIndex++])
   }

@@ -192,6 +192,11 @@ describe("DiffViewer", () => {
     )
 
     expect(screen.getAllByRole("columnheader")).toHaveLength(6)
+    // Slot output is clipped to the fixed row height.
+    expect(
+      screen.getAllByRole("button", { name: "Comment on line 1" })[0]
+        .parentElement
+    ).toHaveClass("h-5", "overflow-hidden")
     await user.tab()
     await user.tab()
     await user.keyboard("{Enter}")
@@ -236,6 +241,46 @@ describe("DiffViewer with a large diff", () => {
     fireEvent.scroll(container)
 
     expect(firstRow()).toBeGreaterThan(2900)
+  })
+
+  it("keeps a focused row mounted after it scrolls out of view", () => {
+    render(
+      <DiffViewer
+        oldValue={OLD.join("\n")}
+        newValue={NEW.join("\n")}
+        mode="unified"
+        contextLines={20}
+        renderGutter={(line) => (
+          <button
+            type="button"
+            aria-label={`Comment on line ${line.newNumber ?? line.oldNumber}`}
+          />
+        )}
+      />
+    )
+
+    const button = screen.getAllByRole("button", {
+      name: "Comment on line 3",
+    })[0]
+    button.focus()
+    const container = screen.getByRole("table").parentElement!
+    container.scrollTop = 20 * 3000
+    fireEvent.scroll(container)
+
+    expect(button).toBeInTheDocument()
+    expect(button).toHaveFocus()
+  })
+
+  it("sizes the table for wide characters", () => {
+    render(
+      <DiffViewer
+        oldValue="漢字漢字漢字漢字漢字"
+        newValue="漢字漢字漢字漢字漢"
+        mode="unified"
+      />
+    )
+
+    expect(screen.getByRole("table").style.width).toContain("22ch")
   })
 
   it("keeps every collapsed region in the tab order", async () => {

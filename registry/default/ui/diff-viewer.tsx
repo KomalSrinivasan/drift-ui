@@ -93,11 +93,14 @@ function LineCell({
     <td
       className={cn("overflow-hidden px-2 align-top whitespace-pre", className)}
     >
-      <span aria-hidden className="mr-2 text-muted-foreground select-none">
-        {SIGNS[line.type]}
-      </span>
-      <span className="sr-only">{SCREEN_READER_LABELS[line.type]}</span>
-      {renderLine ? renderLine(line) : <LineText line={line} />}
+      {/* Clipped to the row height, so a taller renderLine can't break scrolling. */}
+      <div className="h-5 overflow-hidden">
+        <span aria-hidden className="mr-2 text-muted-foreground select-none">
+          {SIGNS[line.type]}
+        </span>
+        <span className="sr-only">{SCREEN_READER_LABELS[line.type]}</span>
+        {renderLine ? renderLine(line) : <LineText line={line} />}
+      </div>
     </td>
   )
 }
@@ -114,7 +117,9 @@ function GutterCell({
   if (!renderGutter) return null
   return (
     <td data-slot="diff-viewer-gutter" className={cn("align-top", className)}>
-      {renderGutter(line)}
+      <div className="flex h-5 items-center overflow-hidden">
+        {renderGutter(line)}
+      </div>
     </td>
   )
 }
@@ -173,16 +178,28 @@ function buildRows(blocks: DiffBlock[], mode: DiffMode, expandedIds: number[]) {
   return rows
 }
 
+// East Asian wide characters and most emoji take two columns.
+const WIDE_CHARACTER =
+  /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6\u{1f300}-\u{1faff}\u{20000}-\u{3fffd}]/u
+
+function columnWidth(text: string) {
+  let width = 0
+  for (const character of text) {
+    if (character === "\t") width += TAB_SIZE
+    else width += WIDE_CHARACTER.test(character) ? 2 : 1
+  }
+  return width
+}
+
 // Monospace, so the widest line in ch sizes the table before any row renders.
 function widestLine(lines: DiffLine[]) {
   let widest = 0
   for (const line of lines) {
-    for (const text of [line.text, line.oldText ?? ""]) {
-      let width = text.length
-      for (const character of text)
-        if (character === "\t") width += TAB_SIZE - 1
-      widest = Math.max(widest, width)
-    }
+    widest = Math.max(
+      widest,
+      columnWidth(line.text),
+      columnWidth(line.oldText ?? "")
+    )
   }
   return widest
 }
@@ -257,13 +274,19 @@ function DiffViewer({
   }, [isVirtual])
 
   // Toggle rows always render so Tab reaches every collapsed region.
+  // The row holding focus stays mounted too, so scrolling never drops focus.
+  const [focusedKey, setFocusedKey] = React.useState<string | null>(null)
   const rendered: number[] = []
   if (isVirtual) {
     const range = visibleRange(offsets, viewport.top, viewport.height)
     const first = Math.max(0, range.first - OVERSCAN)
     const last = Math.min(rows.length - 1, range.last + OVERSCAN)
     rows.forEach((row, index) => {
-      if ((index >= first && index <= last) || row.kind === "toggle") {
+      if (
+        (index >= first && index <= last) ||
+        row.kind === "toggle" ||
+        rowKey(row) === focusedKey
+      ) {
         rendered.push(index)
       }
     })
@@ -286,6 +309,7 @@ function DiffViewer({
       return (
         <tr
           key={rowKey(row)}
+          data-row-key={rowKey(row)}
           aria-rowindex={rowIndex}
           style={{ height: TOGGLE_HEIGHT }}
         >
@@ -313,6 +337,7 @@ function DiffViewer({
       return (
         <tr
           key={rowKey(row)}
+          data-row-key={rowKey(row)}
           aria-rowindex={rowIndex}
           style={{ height: LINE_HEIGHT }}
         >
@@ -333,6 +358,7 @@ function DiffViewer({
     return (
       <tr
         key={rowKey(row)}
+        data-row-key={rowKey(row)}
         aria-rowindex={rowIndex}
         style={{ height: LINE_HEIGHT }}
         className={LINE_CLASSES[line.type]}
@@ -451,7 +477,21 @@ function DiffViewer({
             )}
           </tr>
         </thead>
-        <tbody>{body}</tbody>
+        <tbody
+          onFocus={(event) => {
+            const row = (event.target as HTMLElement).closest<HTMLElement>(
+              "tr[data-row-key]"
+            )
+            setFocusedKey(row?.dataset.rowKey ?? null)
+          }}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setFocusedKey(null)
+            }
+          }}
+        >
+          {body}
+        </tbody>
       </table>
     </div>
   )

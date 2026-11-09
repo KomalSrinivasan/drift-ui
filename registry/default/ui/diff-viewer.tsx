@@ -117,7 +117,7 @@ function GutterCell({
   if (!renderGutter) return null
   return (
     <td data-slot="diff-viewer-gutter" className={cn("align-top", className)}>
-      <div className="flex h-5 items-center overflow-hidden">
+      <div className="flex h-5 items-center overflow-hidden has-focus-visible:ring-2 has-focus-visible:ring-ring/50 has-focus-visible:ring-inset">
         {renderGutter(line)}
       </div>
     </td>

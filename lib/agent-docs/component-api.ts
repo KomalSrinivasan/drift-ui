@@ -625,6 +625,25 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           default: "3",
           description: "Unchanged lines kept visible next to each change.",
         },
+        {
+          name: "ignoreWhitespace",
+          type: "boolean",
+          default: "false",
+          description:
+            "Treat lines that differ only in whitespace as unchanged, like git diff -w.",
+        },
+        {
+          name: "renderLine",
+          type: "(line: DiffLine) => ReactNode",
+          description:
+            "Renders the line text, for example with a syntax highlighter. Defaults to the text with word highlights.",
+        },
+        {
+          name: "renderGutter",
+          type: "(line: DiffLine) => ReactNode",
+          description:
+            "Adds a cell before each line number for line actions such as comments.",
+        },
       ],
       rest: "<div>",
     },

@@ -5,9 +5,14 @@ import {
   childEntries,
   childPath,
   expandedToDepth,
+  filterByPath,
   formatValue,
+  isPathAncestor,
+  matchPath,
+  parsePath,
   rootEntries,
   searchJson,
+  truncateString,
 } from "@/registry/default/lib/json-viewer"
 
 const DATA = {
@@ -106,5 +111,163 @@ describe("formatValue", () => {
     expect(formatValue("Ana")).toBe("Ana")
     expect(formatValue(null)).toBe("null")
     expect(formatValue(["a"])).toBe('[\n  "a"\n]')
+  })
+})
+
+describe("parsePath", () => {
+  it("parses dot notation, array indexes, bracket notation and wildcards", () => {
+    expect(parsePath("users[*].email")).toEqual(["users", "*", "email"])
+    expect(parsePath("user.tags[0]")).toEqual(["user", "tags", "0"])
+    expect(parsePath('user["first name"]')).toEqual(["user", "first name"])
+    expect(parsePath('user["foo\\"bar"]')).toEqual(["user", 'foo"bar'])
+    expect(parsePath("$schema")).toEqual(["$schema"])
+    expect(parsePath("$.items[200]")).toEqual(["items", "200"])
+    expect(parsePath("")).toEqual([])
+    expect(parsePath("$")).toEqual([])
+    expect(parsePath(".")).toEqual([])
+  })
+})
+
+describe("matchPath and isPathAncestor", () => {
+  it("matches literal paths and wildcard patterns", () => {
+    expect(matchPath("users[0].email", "users[*].email")).toBe(true)
+    expect(matchPath("users[1].email", "users[*].email")).toBe(true)
+    expect(matchPath("users[0].name", "users[*].email")).toBe(false)
+    expect(matchPath("user.name", "user.name")).toBe(true)
+    expect(matchPath("user.name", "user.age")).toBe(false)
+    expect(matchPath("users[0].email", "users[*]")).toBe(true)
+    expect(matchPath("user.name", ".")).toBe(false)
+    expect(matchPath("user.name", "")).toBe(false)
+  })
+
+  it("checks if a parent path is an ancestor of a path pattern", () => {
+    expect(isPathAncestor("users", "users[*].email")).toBe(true)
+    expect(isPathAncestor("users[0]", "users[*].email")).toBe(true)
+    expect(isPathAncestor("users[0].email", "users[*].email")).toBe(false)
+    expect(isPathAncestor("meta", "users[*].email")).toBe(false)
+  })
+})
+
+describe("filterByPath", () => {
+  it("filters object and array data to only paths matching the pattern", () => {
+    const payload = {
+      users: [
+        { id: 1, email: "ana@example.com", name: "Ana" },
+        { id: 2, email: "bob@example.com", name: "Bob" },
+      ],
+      meta: { total: 2, version: "v1" },
+    }
+
+    expect(filterByPath(payload, "users[*].email")).toEqual({
+      users: [{ email: "ana@example.com" }, { email: "bob@example.com" }],
+    })
+
+    expect(filterByPath(payload, "users[0].name")).toEqual({
+      users: [{ name: "Ana" }],
+    })
+
+    expect(filterByPath(payload, "meta.version")).toEqual({
+      meta: { version: "v1" },
+    })
+
+    expect(filterByPath(payload, "nonexistent")).toEqual({})
+    expect(filterByPath(payload, "")).toBe(payload)
+  })
+
+  it("preserves original array indices without renumbering rows", () => {
+    const arrayData = {
+      users: [
+        { id: 1, name: "Alice" },
+        { id: 2, name: "Bob", email: "bob@example.com" },
+      ],
+    }
+    const filtered = filterByPath(arrayData, "users[*].email") as {
+      users: unknown[]
+    }
+    expect(0 in filtered.users).toBe(false)
+    expect(1 in filtered.users).toBe(true)
+    expect(filtered.users[1]).toEqual({ email: "bob@example.com" })
+  })
+
+  it("safely handles own __proto__ property in wildcard filtering", () => {
+    const protoData = JSON.parse('{"__proto__": "custom", "valid": 123}')
+    const filteredProto = filterByPath(protoData, "*") as Record<
+      string,
+      unknown
+    >
+    expect(
+      Object.prototype.hasOwnProperty.call(filteredProto, "__proto__")
+    ).toBe(true)
+    expect(filteredProto.valid).toBe(123)
+  })
+})
+
+describe("childEntries with sparse arrays", () => {
+  it("emits only chunks containing populated indices", () => {
+    const sparseArray: unknown[] = []
+    sparseArray[500] = { name: "Special" }
+    const chunks = childEntries(sparseArray, "items")
+    expect(chunks).toHaveLength(1)
+    expect(chunks[0].range).toEqual([500, 500])
+  })
+})
+
+describe("truncateString", () => {
+  it("leaves short single-line strings intact", () => {
+    expect(truncateString("hello world", 80)).toEqual({
+      isLong: false,
+      preview: "hello world",
+    })
+  })
+
+  it("truncates strings over the max length", () => {
+    const long = "A".repeat(120)
+    expect(truncateString(long, 80)).toEqual({
+      isLong: true,
+      preview: "A".repeat(80),
+    })
+  })
+
+  it("truncates multi-line strings to their first line", () => {
+    expect(truncateString("First line\nSecond line", 80)).toEqual({
+      isLong: true,
+      preview: "First line",
+    })
+  })
+})
+
+describe("searchJson path queries", () => {
+  it("matches paths using path patterns like users[*].email", () => {
+    const payload = {
+      users: [
+        { id: 1, email: "ana@example.com" },
+        { id: 2, email: "bob@example.com" },
+      ],
+    }
+    const { matches, ancestors } = searchJson(payload, "users[*].email")
+    expect([...matches]).toEqual(["users[0].email", "users[1].email"])
+    expect([...ancestors]).toEqual(["users", "users[0]", "users[1]"])
+  })
+
+  it("does not match all paths when query is punctuation like '.'", () => {
+    const { matches } = searchJson(DATA, ".")
+    expect(matches.size).toBe(0)
+  })
+})
+
+describe("scale limit benchmark", () => {
+  it("operates correctly on a large payload (10,000+ items)", () => {
+    const records = Array.from({ length: 10000 }, (_, i) => ({
+      id: `rec_${i}`,
+      user: { email: `user${i}@example.com` },
+    }))
+    const largeData = { items: records }
+
+    const roots = rootEntries(largeData)
+    expect(roots).toHaveLength(1)
+
+    const res = searchJson(largeData, "user9999@example.com")
+    expect(res.matches.size).toBe(1)
+    expect(res.ancestors.size).toBeGreaterThan(0)
   })
 })

@@ -13,6 +13,7 @@ export type CatalogEntry = {
   registryDependencies: string[]
   files: RegistryFile[]
   stageClassName?: string
+  isFlagship?: boolean
 }
 
 type RegistryItem = (typeof registry.items)[number] & {
@@ -53,9 +54,10 @@ const ENTRY_LAYOUT: {
   slug: string
   category: CategoryId
   stageClassName?: string
+  isFlagship?: boolean
 }[] = [
   { slug: "color-picker", category: "inputs" },
-  { slug: "date-time-range", category: "inputs" },
+  { slug: "date-time-range", category: "inputs", isFlagship: true },
   { slug: "duration-input", category: "inputs" },
   { slug: "emoji-picker", category: "inputs" },
   { slug: "file-dropzone", category: "inputs" },
@@ -68,20 +70,24 @@ const ENTRY_LAYOUT: {
   { slug: "password-input", category: "inputs" },
   { slug: "phone-input", category: "inputs" },
   { slug: "rating", category: "inputs" },
-  { slug: "recurrence-editor", category: "inputs" },
+  { slug: "recurrence-editor", category: "inputs", isFlagship: true },
   { slug: "secret-field", category: "inputs" },
   { slug: "shortcut-recorder", category: "inputs", stageClassName: "gap-8" },
   { slug: "signature-pad", category: "inputs" },
   { slug: "tags-input", category: "inputs" },
   { slug: "time-field", category: "inputs", stageClassName: "gap-8" },
+  { slug: "timezone-picker", category: "inputs" },
   { slug: "avatar-group", category: "structure" },
   { slug: "description-list", category: "structure" },
   { slug: "diff-viewer", category: "structure" },
   { slug: "json-viewer", category: "structure" },
+  { slug: "log-viewer", category: "structure" },
   { slug: "sortable-list", category: "structure" },
   { slug: "stepper", category: "structure" },
   { slug: "timeline", category: "structure" },
-  { slug: "tree-view", category: "structure" },
+  { slug: "trace-waterfall", category: "structure" },
+  { slug: "tree-view", category: "structure", isFlagship: true },
+  { slug: "uptime-bar", category: "structure" },
   { slug: "virtual-list", category: "structure" },
   {
     slug: "bulk-action-bar",
@@ -89,12 +95,25 @@ const ENTRY_LAYOUT: {
     stageClassName:
       "relative min-h-72 flex-col flex-nowrap items-stretch justify-start pb-20",
   },
+  { slug: "comment-thread", category: "workflow" },
   {
     slug: "filter-builder",
     category: "workflow",
+    isFlagship: true,
     stageClassName: "flex-col flex-nowrap items-stretch justify-start",
   },
-  { slug: "saved-views", category: "workflow" },
+  { slug: "notification-inbox", category: "workflow" },
+  {
+    slug: "onboarding-checklist",
+    category: "workflow",
+    stageClassName: "flex-col flex-nowrap items-stretch",
+  },
+  {
+    slug: "permission-matrix",
+    category: "workflow",
+    stageClassName: "flex-col flex-nowrap items-stretch",
+  },
+  { slug: "saved-views", category: "workflow", isFlagship: true },
   { slug: "shortcut-cheatsheet", category: "workflow" },
   {
     slug: "tour",

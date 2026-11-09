@@ -1,40 +1,46 @@
-import Link from "next/link"
-import { ArrowUpRightIcon, ChevronRightIcon } from "lucide-react"
+import { ArrowUpRightIcon } from "lucide-react"
 
+import { FlagshipSticker } from "@/components/docs/flagship-sticker"
 import { LibraryTabs } from "@/components/docs/library-tabs"
-import { findCategory, type CatalogEntry } from "@/lib/catalog"
+import { CATALOG, findCategory, type CatalogEntry } from "@/lib/catalog"
 import {
   registryItemPath,
   type PrimitiveLibrary,
 } from "@/lib/primitive-library"
+import { siteConfig } from "@/lib/site-config"
 
 export function ComponentHeader({
   entry,
   library,
+  sourceUrl,
 }: {
   entry: CatalogEntry
   library: PrimitiveLibrary
+  sourceUrl: string
 }) {
   const category = findCategory(entry.category)
+  const position = CATALOG.indexOf(entry) + 1
+  const registryPath = registryItemPath(entry.slug, library)
+  const v0Url = `https://v0.app/chat/api/open?url=${encodeURIComponent(`${siteConfig.url}${registryPath}`)}`
 
   return (
     <header className="flex flex-col gap-5">
-      <nav
-        aria-label="Breadcrumb"
-        className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground"
-      >
-        <Link
-          href="/components"
-          className="transition-colors hover:text-foreground"
-        >
-          Components
-        </Link>
-        <ChevronRightIcon className="size-3 opacity-60" />
+      <p className="flex items-center gap-2 font-mono text-xs text-muted-foreground tabular-nums">
+        <span>
+          <span className="text-brand">
+            {String(position).padStart(2, "0")}
+          </span>{" "}
+          / {CATALOG.length}
+        </span>
+        <span aria-hidden>·</span>
         <span>{category?.label}</span>
-      </nav>
-      <h1 className="text-4xl leading-[1.05] font-medium tracking-tight md:text-5xl">
-        {entry.name}
-      </h1>
+      </p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <h1 className="font-display text-5xl leading-[0.95] font-semibold tracking-[-0.045em] md:text-6xl">
+          {entry.name}
+        </h1>
+        {entry.isFlagship && <FlagshipSticker className="text-sm" />}
+      </div>
       <p className="max-w-[58ch] text-lg leading-relaxed text-muted-foreground">
         {entry.description}
       </p>
@@ -42,10 +48,28 @@ export function ComponentHeader({
         <code className="text-foreground">@drift-ui/{entry.slug}</code>
         {entry.category === "primitives" && <span>Same API as shadcn/ui</span>}
         <a
-          href={registryItemPath(entry.slug, library)}
+          href={registryPath}
           className="flex items-center gap-1 transition-colors hover:text-foreground"
         >
           Registry JSON
+          <ArrowUpRightIcon className="size-3" />
+        </a>
+        <a
+          href={sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1 transition-colors hover:text-foreground"
+        >
+          View on GitHub
+          <ArrowUpRightIcon className="size-3" />
+        </a>
+        <a
+          href={v0Url}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1 transition-colors hover:text-foreground"
+        >
+          Open in v0
           <ArrowUpRightIcon className="size-3" />
         </a>
       </div>

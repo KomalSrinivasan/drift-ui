@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import type { CatalogCard } from "@/components/docs/component-card"
+import type { CatalogCard } from "@/components/docs/components-browser"
 import { ComponentsBrowser } from "@/components/docs/components-browser"
 import { CATEGORIES } from "@/lib/catalog"
 
@@ -46,10 +46,10 @@ afterEach(() => {
 })
 
 describe("ComponentsBrowser", () => {
-  it("hides filtered cards without remounting their previews", async () => {
+  it("mounts only the previewed component and keeps it while filtering", async () => {
     const user = userEvent.setup()
     renderBrowser()
-    expect(mounts).toHaveBeenCalledTimes(2)
+    expect(mounts).toHaveBeenCalledTimes(1)
 
     const search = screen.getByRole("searchbox")
     await user.type(search, "rating")
@@ -58,7 +58,30 @@ describe("ComponentsBrowser", () => {
 
     await user.clear(search)
     expect(stepper()).toBeInTheDocument()
-    expect(mounts).toHaveBeenCalledTimes(2)
+    expect(mounts).toHaveBeenCalledTimes(1)
+  })
+
+  it("previews the focused row on the stage", () => {
+    renderBrowser()
+    const preview = () => screen.getByRole("complementary", { name: "Preview" })
+    expect(preview()).toHaveTextContent("Rating")
+
+    act(() => stepper()!.focus())
+    expect(preview()).toHaveTextContent("Stepper")
+    expect(screen.getByRole("link", { name: "Open Stepper" })).toHaveAttribute(
+      "href",
+      "/components/stepper"
+    )
+  })
+
+  it("moves the stage to the first match when the previewed row is filtered out", async () => {
+    const user = userEvent.setup()
+    renderBrowser()
+
+    await user.type(screen.getByRole("searchbox"), "step")
+    expect(
+      screen.getByRole("complementary", { name: "Preview" })
+    ).toHaveTextContent("Stepper")
   })
 
   it("announces how many components match", async () => {
@@ -110,5 +133,34 @@ describe("ComponentsBrowser", () => {
       vi.advanceTimersByTime(250)
     })
     expect(window.location.search).toBe("?q=rating")
+  })
+
+  it("offers a prefilled component request when nothing matches", async () => {
+    const user = userEvent.setup()
+    renderBrowser()
+
+    await user.type(screen.getByRole("searchbox"), "comment thread")
+
+    const links = screen.getAllByRole("link", { name: /Request a component/ })
+    expect(links).toHaveLength(1)
+    const url = new URL(links[0].getAttribute("href")!)
+    expect(url.pathname).toBe("/localhostd3veloper/drift-ui/issues/new")
+    expect(url.searchParams.get("template")).toBe("component_request.yml")
+    expect(url.searchParams.get("component")).toBe("comment thread")
+    expect(links[0]).toHaveAttribute("target", "_blank")
+  })
+
+  it("ends the list with a request link when there are results", () => {
+    renderBrowser()
+
+    const link = screen.getByRole("link", { name: /Request a component/ })
+    expect(
+      new URL(link.getAttribute("href")!).searchParams.has("component")
+    ).toBe(false)
+    expect(screen.getByText("Don't see the component you need?")).toBeVisible()
+    expect(
+      stepper()!.compareDocumentPosition(link) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
   })
 })

@@ -19,6 +19,7 @@ export function FilterBuilderControlledPreview() {
         fields={FIELDS}
         value={filters}
         onValueChange={setFilters}
+        allowGroups={false}
       />
       <pre className="overflow-x-auto rounded-md border p-3 font-mono text-xs text-muted-foreground">
         {JSON.stringify(filters, null, 2)}

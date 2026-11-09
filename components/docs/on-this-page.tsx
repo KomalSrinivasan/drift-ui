@@ -8,7 +8,7 @@ import { cn } from "@/registry/default/lib/utils"
 
 const ACTIVE_LINE_RATIO = 0.3
 
-type PageSection = { id: string; label: string; isNested?: boolean }
+export type PageSection = { id: string; label: string; isNested?: boolean }
 
 function findActiveSection(sections: PageSection[]) {
   const activeLine = window.innerHeight * ACTIVE_LINE_RATIO
@@ -20,13 +20,7 @@ function findActiveSection(sections: PageSection[]) {
   )?.id
 }
 
-export function OnThisPage({
-  sections,
-  sourceUrl,
-}: {
-  sections: PageSection[]
-  sourceUrl?: string
-}) {
+export function useActiveSection(sections: PageSection[]) {
   const [activeId, setActiveId] = useState<string | undefined>()
 
   useEffect(() => {
@@ -41,6 +35,18 @@ export function OnThisPage({
       window.removeEventListener("scroll", updateActiveId)
     }
   }, [sections])
+
+  return activeId
+}
+
+export function OnThisPage({
+  sections,
+  sourceUrl,
+}: {
+  sections: PageSection[]
+  sourceUrl?: string
+}) {
+  const activeId = useActiveSection(sections)
 
   return (
     <div className="sticky top-28 flex flex-col gap-8 text-sm">
@@ -59,7 +65,7 @@ export function OnThisPage({
                     aria-hidden
                     layoutId="on-this-page-marker"
                     transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                    className="absolute inset-y-1 -left-px w-px bg-foreground"
+                    className="absolute inset-y-1 -left-px w-0.5 rounded-full bg-brand"
                   />
                 )}
                 <a

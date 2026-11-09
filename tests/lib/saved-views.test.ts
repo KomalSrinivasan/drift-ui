@@ -7,8 +7,13 @@ import {
   findUniqueViewName,
   generateViewId,
   getActiveSavedView,
+  isViewDataEqual,
+  isViewDirty,
+  readViewParam,
   renameSavedView,
+  restoreSavedView,
   setDefaultSavedView,
+  writeViewParam,
   type SavedView,
 } from "@/registry/default/lib/saved-views"
 
@@ -197,5 +202,208 @@ describe("getActiveSavedView", () => {
       { id: "2", name: "Second" },
     ]
     expect(getActiveSavedView(views, "999")?.name).toBe("First")
+  })
+})
+
+describe("isViewDataEqual", () => {
+  it("ignores key order", () => {
+    expect(isViewDataEqual({ a: 1, b: 2 }, { b: 2, a: 1 })).toBe(true)
+  })
+
+  it("treats undefined fields as missing", () => {
+    expect(isViewDataEqual({ a: 1, b: undefined }, { a: 1 })).toBe(true)
+    expect(isViewDataEqual({ a: 1 }, { a: 1, b: undefined })).toBe(true)
+    expect(isViewDataEqual({ a: undefined }, { b: undefined })).toBe(true)
+  })
+
+  it("still tells null apart from a missing field", () => {
+    expect(isViewDataEqual({ a: null }, {})).toBe(false)
+  })
+
+  it("compares nested objects and arrays", () => {
+    expect(
+      isViewDataEqual(
+        { filters: [{ field: "status", value: ["open"] }], sort: { by: "id" } },
+        { sort: { by: "id" }, filters: [{ value: ["open"], field: "status" }] }
+      )
+    ).toBe(true)
+    expect(
+      isViewDataEqual(
+        { filters: [{ field: "status", value: ["open"] }] },
+        { filters: [{ field: "status", value: ["closed"] }] }
+      )
+    ).toBe(false)
+  })
+
+  it("keeps array order significant", () => {
+    expect(isViewDataEqual([1, 2], [2, 1])).toBe(false)
+    expect(isViewDataEqual([1, 2], [1, 2, 3])).toBe(false)
+  })
+
+  it("does not treat an array and an object with the same keys as equal", () => {
+    expect(isViewDataEqual(["a"], { 0: "a" })).toBe(false)
+  })
+
+  it("compares dates by time", () => {
+    expect(
+      isViewDataEqual(new Date("2026-01-01"), new Date("2026-01-01"))
+    ).toBe(true)
+    expect(
+      isViewDataEqual(new Date("2026-01-01"), new Date("2026-01-02"))
+    ).toBe(false)
+    expect(isViewDataEqual(new Date("2026-01-01"), {})).toBe(false)
+  })
+
+  it("compares Sets, Maps and RegExps by content", () => {
+    expect(isViewDataEqual(new Set(["a", "b"]), new Set(["b", "a"]))).toBe(true)
+    expect(isViewDataEqual(new Set(["a"]), new Set(["b"]))).toBe(false)
+    expect(
+      isViewDataEqual(new Map([["k", { v: 1 }]]), new Map([["k", { v: 1 }]]))
+    ).toBe(true)
+    expect(
+      isViewDataEqual(new Map([["k", { v: 1 }]]), new Map([["k", { v: 2 }]]))
+    ).toBe(false)
+    expect(isViewDataEqual(/a/i, /a/i)).toBe(true)
+    expect(isViewDataEqual(/a/i, /b/i)).toBe(false)
+  })
+
+  it("matches object members of Sets by content, one to one", () => {
+    expect(
+      isViewDataEqual(
+        new Set([{ id: 1 }, { id: 2 }]),
+        new Set([{ id: 2 }, { id: 1 }])
+      )
+    ).toBe(true)
+    expect(
+      isViewDataEqual(
+        new Set([{ v: 1 }, { v: 1 }]),
+        new Set([{ v: 1 }, { v: 2 }])
+      )
+    ).toBe(false)
+  })
+
+  it("handles cyclic data without overflowing the stack", () => {
+    type Node = { name: string; self?: Node }
+    const a: Node = { name: "a" }
+    a.self = a
+    const b: Node = { name: "a" }
+    b.self = b
+    const c: Node = { name: "c" }
+    c.self = c
+    expect(isViewDataEqual(a, b)).toBe(true)
+    expect(isViewDataEqual(a, c)).toBe(false)
+  })
+
+  it("does not treat objects of different types as equal", () => {
+    expect(isViewDataEqual(new Set(), {})).toBe(false)
+    expect(isViewDataEqual(new Map(), new Set())).toBe(false)
+    expect(isViewDataEqual(/a/, {})).toBe(false)
+  })
+
+  it("handles primitives, NaN and null", () => {
+    expect(isViewDataEqual("a", "a")).toBe(true)
+    expect(isViewDataEqual(1, "1")).toBe(false)
+    expect(isViewDataEqual(NaN, NaN)).toBe(true)
+    expect(isViewDataEqual(null, {})).toBe(false)
+    expect(isViewDataEqual(undefined, null)).toBe(false)
+  })
+})
+
+describe("isViewDirty", () => {
+  const view: SavedView<{ q: string }> = {
+    id: "v",
+    name: "View",
+    data: { q: "a" },
+  }
+
+  it("is clean without currentData or a view", () => {
+    expect(isViewDirty(view, undefined)).toBe(false)
+    expect(isViewDirty(undefined, { q: "a" })).toBe(false)
+  })
+
+  it("compares currentData with the view's data", () => {
+    expect(isViewDirty(view, { q: "a" })).toBe(false)
+    expect(isViewDirty(view, { q: "b" })).toBe(true)
+  })
+
+  it("is clean when the view has no data to compare with", () => {
+    expect(isViewDirty({ id: "v", name: "View" }, { q: "a" })).toBe(false)
+  })
+
+  it("uses a custom equality rule", () => {
+    const sameLetter = (a: { q: string }, b: { q: string }) =>
+      a.q.toLowerCase() === b.q.toLowerCase()
+    expect(isViewDirty(view, { q: "A" }, sameLetter)).toBe(false)
+  })
+})
+
+describe("restoreSavedView", () => {
+  const views: SavedView[] = [
+    { id: "1", name: "One" },
+    { id: "3", name: "Three" },
+  ]
+
+  it("puts the view back at its index", () => {
+    const restored = restoreSavedView(views, { id: "2", name: "Two" }, 1)
+    expect(restored.map((v) => v.id)).toEqual(["1", "2", "3"])
+  })
+
+  it("clamps an index past the end", () => {
+    const restored = restoreSavedView(views, { id: "2", name: "Two" }, 9)
+    expect(restored.map((v) => v.id)).toEqual(["1", "3", "2"])
+  })
+
+  it("drops isDefault when another view became the default", () => {
+    const restored = restoreSavedView(
+      [{ id: "1", name: "One", isDefault: true }],
+      { id: "2", name: "Two", isDefault: true },
+      1
+    )
+    expect(restored.filter((v) => v.isDefault).map((v) => v.id)).toEqual(["1"])
+  })
+
+  it("leaves views alone when the id is already there", () => {
+    expect(restoreSavedView(views, { id: "1", name: "One" }, 0)).toBe(views)
+  })
+})
+
+describe("readViewParam and writeViewParam", () => {
+  const views: SavedView[] = [
+    { id: "all", name: "All", isDefault: true },
+    { id: "mine", name: "Mine" },
+  ]
+
+  it("reads a known view id", () => {
+    expect(readViewParam("?view=mine", views)).toBe("mine")
+  })
+
+  it("resolves a missing or unknown id to the default view", () => {
+    expect(readViewParam("", views)).toBe("all")
+    expect(readViewParam("?view=gone", views)).toBe("all")
+  })
+
+  it("falls back to the first view when none is the default", () => {
+    expect(readViewParam("", [{ id: "a", name: "A" }])).toBe("a")
+  })
+
+  it("returns undefined when there are no views", () => {
+    expect(readViewParam("?view=mine", [])).toBeUndefined()
+  })
+
+  it("supports a custom key and URLSearchParams input", () => {
+    expect(readViewParam(new URLSearchParams("v=mine"), views, "v")).toBe(
+      "mine"
+    )
+  })
+
+  it("writes the active id and keeps other params", () => {
+    expect(writeViewParam("?q=bug", "mine")).toBe("q=bug&view=mine")
+    expect(writeViewParam("?q=bug&view=mine", "all")).toBe("q=bug&view=all")
+    expect(writeViewParam("", "mine", "v")).toBe("v=mine")
+  })
+
+  it("round-trips, including the default view", () => {
+    expect(readViewParam(writeViewParam("", "mine"), views)).toBe("mine")
+    expect(readViewParam(writeViewParam("", "all"), views)).toBe("all")
   })
 })

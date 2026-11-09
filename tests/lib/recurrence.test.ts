@@ -132,4 +132,386 @@ describe("recurrence", () => {
       "2026-11-5 10:00",
     ])
   })
+
+  it("preserves unknown and unhandled RRULE parts on round-trip", () => {
+    const rule =
+      "FREQ=WEEKLY;INTERVAL=2;BYDAY=TU;WKST=SU;BYHOUR=9;X-CUSTOM=DRIFT"
+    const parsed = parseRRule(rule)
+    expect(parsed.unknownParts).toEqual({
+      WKST: "SU",
+      BYHOUR: "9",
+      "X-CUSTOM": "DRIFT",
+    })
+    expect(formatRRule(parsed)).toBe(
+      "FREQ=WEEKLY;INTERVAL=2;BYDAY=TU;WKST=SU;BYHOUR=9;X-CUSTOM=DRIFT"
+    )
+  })
+
+  it("supports BYSETPOS for last weekday, first weekday, etc.", () => {
+    const lastWeekdayRule = "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"
+    const parsed = parseRRule(lastWeekdayRule)
+    expect(parsed.bySetPos).toEqual([-1])
+    expect(describeRecurrence(parsed, TUESDAY)).toBe(
+      "Monthly on the last weekday"
+    )
+    expect(days(lastWeekdayRule, TUESDAY, 3)).toEqual([
+      "2026-11-30 10:00",
+      "2026-12-31 10:00",
+      "2027-1-29 10:00",
+    ])
+
+    const firstWeekdayRule = "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1"
+    expect(describeRecurrence(parseRRule(firstWeekdayRule), TUESDAY)).toBe(
+      "Monthly on the first weekday"
+    )
+    expect(days(firstWeekdayRule, new Date(2026, 10, 1, 10, 0), 3)).toEqual([
+      "2026-11-2 10:00",
+      "2026-12-1 10:00",
+      "2027-1-1 10:00",
+    ])
+  })
+
+  it("supports BYMONTH and ordinals in yearly recurrence", () => {
+    const rule = "FREQ=YEARLY;BYMONTH=3;BYDAY=2SU"
+    const parsed = parseRRule(rule)
+    expect(parsed.byMonth).toEqual([3])
+    expect(describeRecurrence(parsed, TUESDAY)).toBe(
+      "Yearly in March on the second Sunday"
+    )
+    expect(days(rule, new Date(2027, 0, 1, 10, 0), 3)).toEqual([
+      "2027-3-14 10:00",
+      "2028-3-12 10:00",
+      "2029-3-11 10:00",
+    ])
+  })
+
+  it("skips dates specified in EXDATE", () => {
+    const multiLine = [
+      "RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=TU",
+      "EXDATE:20261110T100000Z,20261124T100000Z",
+    ].join("\n")
+
+    const parsed = parseRRule(multiLine)
+    expect(parsed.exdates).toHaveLength(2)
+
+    const startUtc = new Date(Date.UTC(2026, 10, 3, 10, 0))
+    const results = occurrences(parsed, startUtc, 3, { tzid: "UTC" })
+    expect(
+      results.map(
+        (d) => `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`
+      )
+    ).toEqual(["2026-11-3", "2026-11-17", "2026-12-1"])
+
+    const optionsResults = occurrences(
+      parseRRule("FREQ=WEEKLY;BYDAY=TU"),
+      TUESDAY,
+      3,
+      {
+        exdates: [new Date(2026, 10, 10)],
+      }
+    )
+    expect(
+      optionsResults.map(
+        (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+      )
+    ).toEqual(["2026-11-3", "2026-11-17", "2026-11-24"])
+  })
+
+  it("keeps exact wall-clock time invariant across daylight saving transitions", () => {
+    const nyFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false,
+    })
+
+    const beforeSpringForward = new Date("2026-03-06T10:00:00-05:00")
+    const springOccurrences = occurrences(
+      parseRRule("FREQ=DAILY"),
+      beforeSpringForward,
+      5,
+      { tzid: "America/New_York" }
+    )
+    expect(springOccurrences).toHaveLength(5)
+    for (const occ of springOccurrences) {
+      const parts = nyFormatter.formatToParts(occ)
+      const hourPart = parts.find((p) => p.type === "hour")?.value
+      const minPart = parts.find((p) => p.type === "minute")?.value
+      expect(hourPart).toBe("10")
+      expect(minPart).toBe("00")
+    }
+
+    const beforeFallBack = new Date("2026-10-30T10:00:00-04:00")
+    const fallOccurrences = occurrences(
+      parseRRule("FREQ=DAILY"),
+      beforeFallBack,
+      5,
+      { tzid: "America/New_York" }
+    )
+    expect(fallOccurrences).toHaveLength(5)
+    for (const occ of fallOccurrences) {
+      const parts = nyFormatter.formatToParts(occ)
+      const hourPart = parts.find((p) => p.type === "hour")?.value
+      const minPart = parts.find((p) => p.type === "minute")?.value
+      expect(hourPart).toBe("10")
+      expect(minPart).toBe("00")
+    }
+  })
+
+  it("skips nonexistent local time falling into spring-forward DST gap", () => {
+    const start230 = new Date("2026-03-07T02:30:00-05:00")
+    const result = occurrences(parseRRule("FREQ=DAILY"), start230, 3, {
+      tzid: "America/New_York",
+    })
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false,
+    })
+    const formatted = result.map((d) => {
+      const p = formatter.formatToParts(d)
+      const m: Record<string, string> = {}
+      for (const part of p) m[part.type] = part.value
+      return `${m.year}-${m.month}-${m.day} ${m.hour}:${m.minute}`
+    })
+    expect(formatted).toEqual([
+      "2026-3-7 02:30",
+      "2026-3-9 02:30",
+      "2026-3-10 02:30",
+    ])
+  })
+
+  it("round-trips Google Calendar export fixtures", () => {
+    const gcalWeekly = "RRULE:FREQ=WEEKLY;WKST=SU;BYDAY=MO,WE,FR"
+    const parsed = parseRRule(gcalWeekly)
+    expect(formatRRule(parsed, { prefix: true })).toBe(
+      "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;WKST=SU"
+    )
+
+    const gcalExdate = [
+      "RRULE:FREQ=WEEKLY;WKST=SU;BYDAY=TU",
+      "EXDATE;TZID=America/New_York:20261110T100000",
+    ].join("\n")
+    const parsedExdate = parseRRule(gcalExdate)
+    expect(parsedExdate.unknownParts?.WKST).toBe("SU")
+    expect(parsedExdate.tzid).toBe("America/New_York")
+    expect(parsedExdate.exdates).toHaveLength(1)
+  })
+
+  it("round-trips Outlook export fixtures", () => {
+    const outlookMonthly =
+      "RRULE:FREQ=MONTHLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"
+    const parsed = parseRRule(outlookMonthly)
+    expect(parsed.bySetPos).toEqual([-1])
+    expect(formatRRule(parsed, { prefix: true })).toBe(
+      "RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"
+    )
+
+    const outlookYearly = "RRULE:FREQ=YEARLY;INTERVAL=1;BYMONTH=3;BYDAY=2SU"
+    const parsedYearly = parseRRule(outlookYearly)
+    expect(parsedYearly.byMonth).toEqual([3])
+    expect(formatRRule(parsedYearly, { prefix: true })).toBe(
+      "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU"
+    )
+  })
+
+  it("round-trips Apple Calendar export fixtures", () => {
+    const appleYearly = "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU"
+    const parsed = parseRRule(appleYearly)
+    expect(parsed.byMonth).toEqual([11])
+    expect(formatRRule(parsed, { prefix: true })).toBe(
+      "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU"
+    )
+
+    const appleCustom =
+      "RRULE:FREQ=WEEKLY;BYDAY=TU;X-APPLE-TRAVEL-ADVISORY-BEHAVIOR=AUTOMATIC"
+    const parsedCustom = parseRRule(appleCustom)
+    expect(
+      parsedCustom.unknownParts?.["X-APPLE-TRAVEL-ADVISORY-BEHAVIOR"]
+    ).toBe("AUTOMATIC")
+    expect(formatRRule(parsedCustom, { prefix: true })).toBe(appleCustom)
+  })
+
+  it("handles awkward recurrences (5th Tuesday, leap day)", () => {
+    const fifthTuesday = occurrences(
+      parseRRule("FREQ=MONTHLY;BYDAY=5TU"),
+      TUESDAY,
+      2
+    )
+    expect(
+      fifthTuesday.map(
+        (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+      )
+    ).toEqual(["2026-12-29", "2027-3-30"])
+
+    const leapDay = new Date(2024, 1, 29, 12, 0)
+    const leapOccurrences = occurrences(parseRRule("FREQ=YEARLY"), leapDay, 2)
+    expect(
+      leapOccurrences.map(
+        (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+      )
+    ).toEqual(["2024-2-29", "2028-2-29"])
+  })
+
+  it("satisfies scale limits: parses 1,000 rules and expands 500 occurrences deterministically", () => {
+    let lastParsed
+    for (let i = 0; i < 1000; i++) {
+      lastParsed = parseRRule(
+        "FREQ=MONTHLY;INTERVAL=2;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1;WKST=SU;X-DRIFT=1"
+      )
+    }
+    expect(lastParsed?.bySetPos).toEqual([-1])
+    expect(lastParsed?.unknownParts?.["X-DRIFT"]).toBe("1")
+
+    const expanded = occurrences(
+      parseRRule("FREQ=DAILY;INTERVAL=1"),
+      TUESDAY,
+      500
+    )
+    expect(expanded).toHaveLength(500)
+    expect(expanded[0]).toEqual(TUESDAY)
+  })
+
+  it("normalizes lowercase BYDAY values like tu and preserves unknown parts", () => {
+    const parsed = parseRRule("FREQ=WEEKLY;BYDAY=tu,we;X-CUSTOM=foo_Bar")
+    expect(parsed.byDay).toEqual([{ weekday: "TU" }, { weekday: "WE" }])
+    expect(parsed.unknownParts?.["X-CUSTOM"]).toBe("foo_Bar")
+  })
+
+  it("applies both BYDAY and BYMONTHDAY when combined", () => {
+    const start = new Date(2026, 0, 1)
+    const results = occurrences(
+      parseRRule("FREQ=MONTHLY;BYDAY=MO;BYMONTHDAY=1"),
+      start,
+      3
+    )
+    expect(results).toHaveLength(3)
+    for (const d of results) {
+      expect(d.getDate()).toBe(1)
+      expect(d.getDay()).toBe(1)
+    }
+  })
+
+  it("returns an empty array when limit is non-positive", () => {
+    expect(occurrences(parseRRule("FREQ=DAILY"), TUESDAY, 0)).toEqual([])
+    expect(occurrences(parseRRule("FREQ=DAILY"), TUESDAY, -1)).toEqual([])
+  })
+
+  it("preserves date-time precision for midnight UTC UNTIL values", () => {
+    const parsed = parseRRule("FREQ=DAILY;UNTIL=20261105T000000Z")
+    expect(formatRRule(parsed)).toBe("FREQ=DAILY;UNTIL=20261105T000000Z")
+  })
+
+  it("preserves prefix omission for multiline rules", () => {
+    const multilineWithoutPrefix = [
+      "FREQ=WEEKLY;BYDAY=TU",
+      "EXDATE:20261110T100000Z",
+    ].join("\n")
+    const parsed = parseRRule(multilineWithoutPrefix)
+    const serialized = formatRRule(parsed, { multiline: true, prefix: false })
+    expect(serialized).toBe(multilineWithoutPrefix)
+    expect(serialized.startsWith("RRULE:")).toBe(false)
+  })
+
+  it("preserves date-only UNTIL across timezones without moving cutoff", () => {
+    const parsed = parseRRule(
+      "FREQ=DAILY;UNTIL=20260101;TZID=America/Los_Angeles"
+    )
+    expect(parsed.tzid).toBe("America/Los_Angeles")
+    expect(formatRRule(parsed)).toBe("FREQ=DAILY;UNTIL=20260101")
+  })
+
+  it("formats date-only UNTIL in associated TZID when serializing", () => {
+    // 2026-01-01 23:59:59 in America/Los_Angeles is 2026-01-02 07:59:59 UTC
+    const date = new Date("2026-01-02T07:59:59.000Z")
+    const tagged = Object.assign(date, { isDateOnly: true })
+    const formatted = formatRRule({
+      frequency: "DAILY",
+      interval: 1,
+      byDay: [],
+      byMonthDay: [],
+      until: tagged,
+      tzid: "America/Los_Angeles",
+    })
+    expect(formatted).toBe("FREQ=DAILY;UNTIL=20260101")
+  })
+
+  it("rejects invalid calendar dates in UNTIL without emitting them", () => {
+    const parsedHyphen = parseRRule("FREQ=DAILY;UNTIL=2026-02-31")
+    expect(parsedHyphen.until).toBeUndefined()
+    expect(formatRRule(parsedHyphen)).toBe("FREQ=DAILY")
+
+    const parsedCompact = parseRRule("FREQ=DAILY;UNTIL=20260231")
+    expect(parsedCompact.until).toBeUndefined()
+    expect(formatRRule(parsedCompact)).toBe("FREQ=DAILY")
+  })
+
+  it("falls back gracefully in describeRecurrence when TZID is unsupported", () => {
+    const parsed = parseRRule(
+      "FREQ=DAILY;UNTIL=20261105T120000Z;TZID=Custom/InvalidZone"
+    )
+    expect(() => describeRecurrence(parsed, TUESDAY)).not.toThrow()
+    expect(describeRecurrence(parsed, TUESDAY)).toContain("until Nov 5, 2026")
+  })
+
+  it("evaluates ordinals across the full year for YEARLY rules without BYMONTH", () => {
+    const start = new Date(2026, 0, 1)
+    const results = occurrences(parseRRule("FREQ=YEARLY;BYDAY=1MO"), start, 2)
+    expect(
+      results.map(
+        (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+      )
+    ).toEqual(["2026-1-5", "2027-1-4"])
+  })
+
+  it("evaluates BYSETPOS across the full year interval in YEARLY rules", () => {
+    const start = new Date(2026, 0, 1)
+    const results = occurrences(
+      parseRRule("FREQ=YEARLY;BYMONTH=3,11;BYDAY=FR;BYSETPOS=-1"),
+      start,
+      2
+    )
+    expect(
+      results.map(
+        (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+      )
+    ).toEqual(["2026-11-27", "2027-11-26"])
+  })
+
+  it("stops counting after rule COUNT without refilling excluded instances", () => {
+    const start = new Date(2026, 10, 3)
+    const results = occurrences(parseRRule("FREQ=DAILY;COUNT=3"), start, 10, {
+      exdates: [new Date(2026, 10, 4)],
+    })
+    expect(
+      results.map(
+        (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+      )
+    ).toEqual(["2026-11-3", "2026-11-5"])
+  })
+
+  it("distinguishes date-only vs date-time EXDATE precision", () => {
+    const start = new Date(2026, 10, 3, 10, 0, 0)
+    const differentTimeExdate = occurrences(
+      parseRRule("FREQ=DAILY"),
+      start,
+      2,
+      { exdates: ["20261103T140000"] }
+    )
+    expect(differentTimeExdate[0].getTime()).toBe(start.getTime())
+
+    const sameTimeExdate = occurrences(parseRRule("FREQ=DAILY"), start, 2, {
+      exdates: ["20261103T100000"],
+    })
+    expect(sameTimeExdate[0].getDate()).toBe(4)
+
+    const dateOnlyExdate = occurrences(parseRRule("FREQ=DAILY"), start, 2, {
+      exdates: ["20261103"],
+    })
+    expect(dateOnlyExdate[0].getDate()).toBe(4)
+  })
 })

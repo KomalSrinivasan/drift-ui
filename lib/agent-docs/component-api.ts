@@ -274,18 +274,187 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       rest: "trigger <button>",
     },
   ],
+  "comment-thread": [
+    {
+      name: "CommentThread",
+      description:
+        "A single review thread. Top-level comments can have one level of replies; replying to a reply adds to the same top-level comment and starts the draft with @author when the author's id is a mention value. Ctrl or Cmd+Enter submits, Escape cancels an edit, a reply or a delete confirmation, and the reaction picker moves with the Left and Right arrow keys, Home and End.",
+      props: [
+        {
+          name: "comments",
+          type: "Comment[]",
+          description:
+            "Controlled comments. Top-level comments render in array order, each followed by its replies in array order.",
+        },
+        {
+          name: "defaultComments",
+          type: "Comment[]",
+          default: "[]",
+          description: "Initial comments when uncontrolled.",
+        },
+        {
+          name: "onCommentsChange",
+          type: "(comments: Comment[]) => void",
+          description:
+            "Called with the full list after a comment is posted, edited or deleted, or a reaction changes.",
+        },
+        {
+          name: "currentUser",
+          type: "CommentAuthor",
+          description:
+            "The person writing. Edit and delete appear only on comments whose author.id matches. Leave it out for a read-only thread with no composer, actions or reaction toggles.",
+        },
+        {
+          name: "mentionSuggestions",
+          type: "MentionOption[]",
+          default: "[]",
+          description:
+            "People offered after @ in the composer. An @value in a body is highlighted only when value is in this list.",
+        },
+        {
+          name: "reactions",
+          type: "ReactionOption[]",
+          default: "QUICK_REACTIONS",
+          description:
+            "Emoji offered in the reaction picker, each { emoji, label }. The default is 👍 👎 😄 🎉 😕 ❤️ 🚀 👀.",
+        },
+        {
+          name: "resolved",
+          type: "boolean",
+          description:
+            "Controlled resolved state. A resolved thread collapses to a summary row with Show thread, plus Reopen when currentUser is set.",
+        },
+        {
+          name: "defaultResolved",
+          type: "boolean",
+          default: "false",
+          description: "Initial resolved state when uncontrolled.",
+        },
+        {
+          name: "onResolvedChange",
+          type: "(resolved: boolean) => void",
+          description: "Called when someone resolves or reopens the thread.",
+        },
+        {
+          name: "resolvedBy",
+          type: "CommentAuthor",
+          description:
+            "Shown as Resolved by name. Falls back to currentUser when the thread was resolved in this session.",
+        },
+        {
+          name: "onReply",
+          type: "(parentId: string | null, body: string, mentions: string[]) => void | Promise<void>",
+          description:
+            "Called with the trimmed body and the mentioned values. parentId is null for a new top-level comment. The comment is added after the promise resolves; if it rejects, the draft stays and an error shows.",
+        },
+        {
+          name: "onEdit",
+          type: "(id: string, body: string, mentions: string[]) => void | Promise<void>",
+          description:
+            "Called when an edit is saved with different text. Same promise handling as onReply.",
+        },
+        {
+          name: "onDelete",
+          type: "(id: string) => void | Promise<void>",
+          description:
+            "Called after the delete is confirmed. A comment with replies becomes a deleted placeholder; one without is removed. If the promise rejects, the comment stays.",
+        },
+        {
+          name: "onReactionToggle",
+          type: "(id: string, emoji: string) => void",
+          description:
+            "Called after the current user adds or removes a reaction.",
+        },
+        {
+          name: "now",
+          type: "Date",
+          description:
+            "Reference time for relative timestamps. Without it the thread uses the current time and updates every minute.",
+        },
+        {
+          name: "locale",
+          type: "string",
+          description:
+            "Locale for relative and absolute timestamps. Defaults to the browser locale.",
+        },
+        {
+          name: "aria-label",
+          type: "string",
+          default: '"Comment thread"',
+          description: "Accessible name of the thread region.",
+        },
+      ],
+      rest: "<section>",
+    },
+    {
+      name: "Comment",
+      description: "One comment or reply.",
+      props: [
+        {
+          name: "id",
+          type: "string",
+          required: true,
+          description: "Unique id.",
+        },
+        {
+          name: "parentId",
+          type: "string | null",
+          description:
+            "The comment this replies to. Missing parents make it a top-level comment.",
+        },
+        {
+          name: "author",
+          type: "CommentAuthor",
+          required: true,
+          description:
+            "{ id: string; name: string; avatarUrl?: string }. Initials show when there is no avatarUrl or it fails to load.",
+        },
+        {
+          name: "body",
+          type: "string",
+          required: true,
+          description:
+            "Plain text. Line breaks are kept and HTML is shown as text.",
+        },
+        {
+          name: "createdAt",
+          type: "Date | string",
+          required: true,
+          description:
+            "Any value new Date() accepts. An invalid date hides the timestamp.",
+        },
+        {
+          name: "editedAt",
+          type: "Date | string",
+          description: "Shows (edited) with the time in its tooltip.",
+        },
+        {
+          name: "deleted",
+          type: "boolean",
+          description:
+            "Shows a deleted placeholder while the comment has replies, and hides it otherwise.",
+        },
+        {
+          name: "reactions",
+          type: "{ emoji: string; userIds: string[] }[]",
+          description:
+            "Each emoji and who reacted. Names come from the thread's authors and currentUser.",
+        },
+      ],
+    },
+  ],
   "date-time-range": [
     {
       name: "DateTimeRangePicker",
       description:
-        "A popover with presets, a range calendar and start and end TimeFields. Times default to 09:00 and 17:00 and show the local time zone. Open with Enter or Space, move between days with the arrow keys, press Enter on the first and last day, Tab to the times, and close with Escape. With the default two months, opening takes about 30 ms and each arrow key about 20 ms of render time (Chrome, Apple M4, production build). Every visible day re-renders on each key, so cost grows with numberOfMonths: at 12 months, opening takes about 220 ms and an arrow key about 40 ms. 1,000 presets add about 20 ms to opening and 10 ms to picking a day.",
+        "A popover with presets, a field for typed ranges, a range calendar and start and end TimeFields. Times default to 09:00 and 17:00 and show the local time zone. Open with Enter or Space, Shift+Tab from the calendar to the typed field and press Enter to apply what you typed, move between days with the arrow keys, press Enter on the first and last day, Tab to the times, and close with Escape. With the default two months, opening takes about 30 ms and each arrow key about 20 ms of render time (Chrome, Apple M4, production build). Every visible day re-renders on each key, so cost grows with numberOfMonths: at 12 months, opening takes about 220 ms and an arrow key about 40 ms. 1,000 presets add about 20 ms to opening and 10 ms to picking a day.",
       rest: "<button>",
       props: [
         STATE_PROPS.value("{ from?: Date; to?: Date }", "range"),
         STATE_PROPS.defaultValue("{ from?: Date; to?: Date }", "{}"),
         STATE_PROPS.onValueChange(
           "(range: { from?: Date; to?: Date }) => void",
-          "when a day, time or preset changes, or the range is cleared"
+          "when a day, time, preset or typed range changes, or the range is cleared"
         ),
         {
           name: "presets",
@@ -311,6 +480,13 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           type: "string",
           description:
             "Locale for the trigger label, the time zone name and the 12 or 24 hour clock.",
+        },
+        {
+          name: "parse",
+          type: "(text: string, now: Date) => { from?: Date; to?: Date } | null",
+          default: "parseRangeText",
+          description:
+            'Reads the typed field. The built-in parser handles English like "last 7 days", "next fri 3pm" and "yesterday to now". Return null for text you can\'t read. A range that overlaps min or max is clamped to them, while one entirely outside them, or one ending before it starts, is rejected.',
         },
         {
           name: "placeholder",
@@ -620,21 +796,27 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
     {
       name: "FilterBuilder",
       description:
-        "A row of filter chips with an Add filter menu. Each chip edits its operator and value in place.",
+        "A row of filter chips with AND/OR groups, date fields, and multi-select. Scale limit: up to 2 nested levels and 20 filters recommended in UI.",
       props: [
         {
           name: "fields",
           type: "FilterField[]",
           required: true,
           description:
-            'Filterable fields: { id, label, type: "text" | "number" | "select", options?, icon? }.',
+            'Filterable fields: { id, label, type: "text" | "number" | "select" | "date", options?, icon? }.',
         },
-        STATE_PROPS.value("Filter[]", "filters"),
-        STATE_PROPS.defaultValue("Filter[]", "[]"),
+        STATE_PROPS.value("Filter[] | FilterGroup", "filters"),
+        STATE_PROPS.defaultValue("Filter[] | FilterGroup", "[]"),
         STATE_PROPS.onValueChange(
-          "(filters: Filter[]) => void",
+          "(filters: Filter[] | FilterGroup) => void",
           "when a filter is added, changed or removed"
         ),
+        {
+          name: "allowGroups",
+          type: "boolean",
+          default: "true",
+          description: "Whether users can create nested AND/OR groups.",
+        },
         {
           name: "aria-label",
           type: "string",
@@ -646,10 +828,36 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
     },
     {
       name: "matchesFilter",
-      signature:
-        "matchesFilter(fieldValue: string | number, filter: Filter): boolean",
+      signature: "matchesFilter(fieldValue: unknown, filter: Filter): boolean",
       description:
-        "Import from @/lib/filter to apply a Filter ({ id, fieldId, operator, value }) to your rows. An empty filter value matches everything. Text fields use contains, not-contains, is and is-not, numbers use eq, gt and lt, and selects use is and is-not.",
+        "Import from @/lib/filter to apply a Filter to your rows. Supports text, number, select (including is-any-of and is-none-of), and date fields (before, after, between).",
+    },
+    {
+      name: "matchesFilterGroup",
+      signature:
+        "matchesFilterGroup(item: Record<string, unknown>, group: FilterGroup): boolean",
+      description:
+        "Evaluates a nested FilterGroup with 'and' / 'or' conjunctions against a record.",
+    },
+    {
+      name: "matchesFilters",
+      signature:
+        "matchesFilters(item: Record<string, unknown>, filters: Filter[] | FilterGroup): boolean",
+      description:
+        "Universal evaluator helper accepting either a flat Filter[] or a FilterGroup.",
+    },
+    {
+      name: "serializeFilters",
+      signature: "serializeFilters(filters: Filter[] | FilterGroup): string",
+      description:
+        "Serializes filters or groups into a compact, human-readable, URL-safe string.",
+    },
+    {
+      name: "parseFilters",
+      signature:
+        "parseFilters(query: string, options?: { asGroup?: boolean }): Filter[] | FilterGroup",
+      description:
+        "Parses a DSL string, URL search parameters, or JSON into Filter[] or FilterGroup.",
     },
   ],
   "image-cropper": [
@@ -824,7 +1032,7 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
     {
       name: "JsonViewer",
       description:
-        "A searchable JSON tree on top of TreeView. Rows show copy value and copy path buttons on hover, or always on touch screens; Ctrl or Cmd+C copies the focused value and Shift+Ctrl or Cmd+C its path. Arrays over 100 items open as groups of 100.",
+        "A searchable JSON tree on top of TreeView with optional row virtualization for large datasets. Supports wildcard path filtering (e.g. users[*].email), truncated multi-line and long strings with inline expand/collapse, deferred search typing, and copy value or path via hover buttons, Ctrl or Cmd+C, and Shift+Ctrl or Cmd+C. Arrays over 100 items open as groups of 100.",
       props: [
         {
           name: "data",
@@ -839,9 +1047,40 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           description: "How many levels start open.",
         },
         {
+          name: "defaultPathFilter",
+          type: "string",
+          description:
+            "Initial path filter pattern e.g. users[*].email or *.id.",
+        },
+        {
+          name: "maxStringLength",
+          type: "number",
+          default: "80",
+          description:
+            "Length threshold for truncating single-line strings with an inline Show more button. Strings containing newlines are always truncated to their first line regardless of length.",
+        },
+        {
           name: "onCopy",
           type: '(path: string, value: unknown, target: "value" | "path") => void',
           description: "Called after a value or path is copied.",
+        },
+        {
+          name: "onPathFilterChange",
+          type: "(path: string) => void",
+          description: "Called when the path filter pattern changes.",
+        },
+        {
+          name: "pathFilter",
+          type: "string",
+          description:
+            "Controlled path filter pattern e.g. users[*].email or *.id.",
+        },
+        {
+          name: "virtual",
+          type: "boolean",
+          default: "false",
+          description:
+            "Whether to virtualize row rendering via TreeView for large datasets.",
         },
       ],
       rest: "<div>",
@@ -853,6 +1092,116 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       description:
         "Same API as the shadcn/ui Label. Skip it if the project already has one. Point htmlFor at a field id. It dims when the field inside its group is disabled.",
       rest: "<label>",
+    },
+  ],
+  "log-viewer": [
+    {
+      name: "LogViewer",
+      description:
+        "High-throughput virtualized log viewer with ANSI color parsing, search, level filtering, and tail auto-scroll.",
+      props: [
+        {
+          name: "defaultFollow",
+          type: "boolean",
+          default: "true",
+          description: "Initial follow state when uncontrolled.",
+        },
+        {
+          name: "defaultLevel",
+          type: "string",
+          default: '"all"',
+          description: "Initial level filter when uncontrolled.",
+        },
+        {
+          name: "defaultSearch",
+          type: "string",
+          default: '""',
+          description: "Initial search query when uncontrolled.",
+        },
+        {
+          name: "emptyMessage",
+          type: "ReactNode",
+          default: '"No log lines matching criteria"',
+          description:
+            "Message or element displayed when no logs match filters.",
+        },
+        {
+          name: "filterable",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether to render log level filter buttons in the toolbar.",
+        },
+        {
+          name: "follow",
+          type: "boolean",
+          description: "Controlled tail auto-scroll state.",
+        },
+        {
+          name: "height",
+          type: "number | string",
+          default: "400",
+          description: "Height of the virtualized log list viewport.",
+        },
+        {
+          name: "level",
+          type: "string",
+          description: "Controlled level filter.",
+        },
+        {
+          name: "lines",
+          type: "LogLine[]",
+          required: true,
+          description: "Array of log entries to display.",
+        },
+        {
+          name: "onFollowChange",
+          type: "(follow: boolean) => void",
+          description: "Called when follow state changes.",
+        },
+        {
+          name: "onLevelChange",
+          type: "(level: string) => void",
+          description: "Called when level filter changes.",
+        },
+        {
+          name: "onSearchChange",
+          type: "(search: string) => void",
+          description: "Called when search query changes.",
+        },
+        {
+          name: "rowHeight",
+          type: "number",
+          default: "24",
+          description: "Estimated line height in pixels for the virtual list.",
+        },
+        {
+          name: "search",
+          type: "string",
+          description: "Controlled search query.",
+        },
+        {
+          name: "searchable",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether to render the search filter input in the toolbar.",
+        },
+        {
+          name: "showLineNumbers",
+          type: "boolean",
+          default: "true",
+          description: "Whether to display line numbers in the gutter.",
+        },
+        {
+          name: "showTimestamps",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether to display timestamps if present in the log line.",
+        },
+      ],
+      rest: "<div>",
     },
   ],
   "masked-input": [
@@ -1057,6 +1406,170 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       ],
     },
   ],
+  "notification-inbox": [
+    {
+      name: "NotificationInbox",
+      description:
+        "A bell button that shows the unread count and opens notifications grouped by day, newest first. Up and Down arrows, Home and End move between items, and Escape closes the popover.",
+      props: [
+        {
+          name: "items",
+          type: "T[]",
+          description:
+            "Controlled notifications. T extends InboxNotification, so extra fields reach renderItem and actions typed.",
+        },
+        {
+          name: "defaultItems",
+          type: "T[]",
+          default: "[]",
+          description: "Initial notifications when uncontrolled.",
+        },
+        {
+          name: "onItemsChange",
+          type: "(items: T[]) => void",
+          description:
+            "Called with the full list when read state changes: an unread item is opened, an item is marked read or unread, or Mark all as read runs. Opening a read item changes nothing, so track opens with onItemClick.",
+        },
+        {
+          name: "onMarkRead",
+          type: "(ids: string[]) => void",
+          description:
+            "Called when an unread item is opened or its Mark as read button is pressed.",
+        },
+        {
+          name: "onMarkUnread",
+          type: "(ids: string[]) => void",
+          description: "Called when Mark as unread is pressed on a read item.",
+        },
+        {
+          name: "onMarkAllRead",
+          type: "() => void",
+          description:
+            "Called by Mark all as read. onMarkRead is not called for it.",
+        },
+        {
+          name: "onItemClick",
+          type: "(notification: T) => void",
+          description:
+            "Called when an item is opened, after it is marked read. The popover then closes.",
+        },
+        {
+          name: "actions",
+          type: "NotificationAction<T>[]",
+          default: "[]",
+          description:
+            "Extra icon buttons on each row, each { label, icon, onSelect(notification) }. If onSelect removes the item, focus moves to the next item.",
+        },
+        {
+          name: "renderItem",
+          type: "(notification: T) => ReactNode",
+          description:
+            "Replaces the content of each row. It renders inside the row's button or link, so it must not contain interactive elements. Defaults to NotificationItem.",
+        },
+        {
+          name: "open",
+          type: "boolean",
+          description: "Controlled open state of the popover.",
+        },
+        {
+          name: "defaultOpen",
+          type: "boolean",
+          default: "false",
+          description: "Initial open state when uncontrolled.",
+        },
+        {
+          name: "onOpenChange",
+          type: "(open: boolean) => void",
+          description: "Called when the popover opens or closes.",
+        },
+        {
+          name: "now",
+          type: "Date",
+          description:
+            "Reference time for the Today and Yesterday headings. Defaults to the current time when the popover renders.",
+        },
+        {
+          name: "locale",
+          type: "string",
+          description:
+            "Locale for day headings and times. Defaults to the browser locale.",
+        },
+        {
+          name: "aria-label",
+          type: "string",
+          default: '"Notifications"',
+          description:
+            "Panel heading and the trigger's accessible name, which adds the unread count.",
+        },
+      ],
+      rest: "<button> (the trigger)",
+    },
+    {
+      name: "InboxNotification",
+      description: "One notification.",
+      props: [
+        {
+          name: "id",
+          type: "string",
+          required: true,
+          description: "Unique id.",
+        },
+        {
+          name: "title",
+          type: "string",
+          required: true,
+          description:
+            "Main line. Also names the row's action buttons for screen readers.",
+        },
+        {
+          name: "body",
+          type: "string",
+          description: "Secondary text, clamped to two lines.",
+        },
+        {
+          name: "createdAt",
+          type: "Date | string",
+          required: true,
+          description:
+            "Any value new Date() accepts. Sets the day group and the time. Items with an invalid date go last under Earlier.",
+        },
+        {
+          name: "read",
+          type: "boolean",
+          default: "false",
+          description: "Unread items show a dot and count toward the badge.",
+        },
+        {
+          name: "href",
+          type: "string",
+          description: "Renders the row as a link instead of a button.",
+        },
+        {
+          name: "actor",
+          type: "{ name: string; avatarUrl?: string }",
+          description:
+            "Shows an avatar, with initials when there is no avatarUrl or it fails to load.",
+        },
+      ],
+    },
+    {
+      name: "NotificationItem",
+      description:
+        "The default row content: avatar, title, body and time. Takes the InboxNotification fields, so <NotificationItem {...notification} /> works inside renderItem.",
+      props: [
+        {
+          name: "locale",
+          type: "string",
+          description: "Locale for the time.",
+        },
+        {
+          name: "className",
+          type: "string",
+          description: "Classes for the content wrapper.",
+        },
+      ],
+    },
+  ],
   "number-input": [
     {
       name: "NumberInput",
@@ -1097,6 +1610,144 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       rest: "<input>",
     },
   ],
+  "onboarding-checklist": [
+    {
+      name: "OnboardingChecklist",
+      description:
+        "Dashboard setup guide with a list of tasks, accessible checkboxes, action buttons, and a progress bar.",
+      props: [
+        {
+          name: "items",
+          type: "OnboardingChecklistItem[]",
+          required: true,
+          description: "List of checklist tasks to display.",
+        },
+        {
+          name: "title",
+          type: "ReactNode",
+          default: '"Getting started"',
+          description: "Card header title.",
+        },
+        {
+          name: "description",
+          type: "ReactNode",
+          description: "Card header description text.",
+        },
+        {
+          name: "completed",
+          type: "string[]",
+          description: "Controlled array of completed task IDs.",
+        },
+        {
+          name: "defaultCompleted",
+          type: "string[]",
+          default: "[]",
+          description: "Initial completed task IDs when uncontrolled.",
+        },
+        {
+          name: "onCompletedChange",
+          type: "(completed: string[]) => void",
+          description: "Called when any task is checked or unchecked.",
+        },
+        {
+          name: "onItemToggle",
+          type: "(item: OnboardingChecklistItem, completed: boolean) => void",
+          description: "Called with the toggled item and its new state.",
+        },
+        {
+          name: "collapsible",
+          type: "boolean",
+          default: "false",
+          description:
+            "Whether the checklist can be collapsed down to header and progress.",
+        },
+        {
+          name: "open",
+          type: "boolean",
+          description: "Controlled open state when collapsible.",
+        },
+        {
+          name: "defaultOpen",
+          type: "boolean",
+          default: "true",
+          description: "Initial open state when collapsible and uncontrolled.",
+        },
+        {
+          name: "onOpenChange",
+          type: "(open: boolean) => void",
+          description: "Called when collapsible open state toggles.",
+        },
+        {
+          name: "progressFormat",
+          type: "(progress: OnboardingChecklistProgress) => ReactNode",
+          description: "Custom formatter for the progress ratio indicator.",
+        },
+      ],
+      rest: "Card root",
+    },
+    {
+      name: "OnboardingChecklistItem",
+      description: "Individual task item definition.",
+      props: [
+        {
+          name: "id",
+          type: "string",
+          required: true,
+          description: "Unique identifier for tracking completion.",
+        },
+        {
+          name: "title",
+          type: "string",
+          required: true,
+          description: "Task title text.",
+        },
+        {
+          name: "description",
+          type: "ReactNode",
+          description: "Optional supplementary details.",
+        },
+        {
+          name: "action",
+          type: "OnboardingChecklistAction",
+          description: "Action button or link for completing the step.",
+        },
+        {
+          name: "disabled",
+          type: "boolean",
+          default: "false",
+          description: "Disables toggling this item.",
+        },
+      ],
+    },
+    {
+      name: "OnboardingChecklistAction",
+      description: "Action button or link configuration for a task.",
+      props: [
+        {
+          name: "label",
+          type: "string",
+          required: true,
+          description: "Button or link text.",
+        },
+        {
+          name: "onClick",
+          type: "(event: MouseEvent<HTMLButtonElement>) => void",
+          description: "Click handler rendering a Button.",
+        },
+        {
+          name: "href",
+          type: "string",
+          description: "URL rendering a styled anchor link.",
+        },
+        {
+          name: "disabled",
+          type: "boolean",
+          default: "false",
+          description: "Disables the action control.",
+        },
+      ],
+    },
+  ],
   "password-input": [
     {
       name: "PasswordInput",
@@ -1127,6 +1778,88 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           default: '["Too weak", "Weak", "Fair", "Good", "Strong"]',
           description: "Label for each score from 0 to 4.",
         },
+      ],
+      rest: "<div>",
+    },
+  ],
+  "permission-matrix": [
+    {
+      name: "PermissionMatrix",
+      description:
+        "A role and access management matrix that maps roles against grouped permissions. Supports tri-state group toggles, recursive role inheritance, sticky headers, and 2D WAI-ARIA grid keyboard navigation.",
+      props: [
+        {
+          name: "allowOverrideInherited",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether inherited permissions can be directly toggled or overridden.",
+        },
+        {
+          name: "defaultExpandedGroups",
+          type: "string[]",
+          description: "IDs of permission groups expanded by default.",
+        },
+        STATE_PROPS.defaultValue("PermissionGrants", "{}"),
+        {
+          name: "disabled",
+          type: "boolean",
+          default: "false",
+          description: "Disables interaction across the entire matrix.",
+        },
+        {
+          name: "expandedGroups",
+          type: "string[]",
+          description:
+            "Controlled array of permission group IDs that are expanded.",
+        },
+        {
+          name: "onExpandedGroupsChange",
+          type: "(groups: string[]) => void",
+          description: "Callback fired when group expansion state changes.",
+        },
+        STATE_PROPS.onValueChange(
+          "(value: PermissionGrants) => void",
+          "when any grant in the matrix is updated"
+        ),
+        {
+          name: "permissions",
+          type: "PermissionGroup[]",
+          required: true,
+          description:
+            "Groups of permission actions displayed in the matrix rows.",
+        },
+        {
+          name: "readOnly",
+          type: "boolean",
+          default: "false",
+          description:
+            "Renders the matrix in read-only audit mode without interactive checkboxes.",
+        },
+        {
+          name: "roles",
+          type: "PermissionRole[]",
+          required: true,
+          description:
+            "Roles displayed across matrix columns, with optional inheritsFrom inheritance.",
+        },
+        {
+          name: "searchPlaceholder",
+          type: "string",
+          default: '"Filter permissions..."',
+          description: "Placeholder text for the search filter input.",
+        },
+        {
+          name: "searchable",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether to show the search input above the matrix to filter permissions.",
+        },
+        STATE_PROPS.value(
+          "PermissionGrants",
+          'Controlled grants mapping role ID to an array of permission IDs. A `"!permissionId"` entry explicitly denies a permission the role would otherwise inherit.'
+        ),
       ],
       rest: "<div>",
     },
@@ -1393,7 +2126,7 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
     {
       name: "RecurrenceEditor",
       description:
-        "Edits an RFC 5545 RRULE: interval and frequency, weekdays for weekly rules, day of the month or ordinal weekday for monthly rules, and an end that is never, a date or a count. Shows a plain-language summary and, optionally, the next occurrences.",
+        "Flagship editor for RFC 5545 recurrence rules. Supports DAILY, WEEKLY, MONTHLY, and YEARLY frequencies with INTERVAL, BYDAY, BYMONTHDAY, BYMONTH, BYSETPOS, COUNT, UNTIL, and EXDATE. Preserves unhandled calendar parts (WKST, BYHOUR, X-*) without dropping or mutating them on round-trip edits. Preserves wall-clock time invariant across daylight saving clock transitions. Scale limit: tested to parse 1,000 rules and expand 500 occurrences efficiently.",
       props: [
         STATE_PROPS.value("string", 'RRULE, such as "FREQ=WEEKLY;BYDAY=TU"'),
         STATE_PROPS.defaultValue("string", '"FREQ=WEEKLY"'),
@@ -1414,15 +2147,27 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           default: "0",
           description: "How many upcoming occurrences to list.",
         },
+        {
+          name: "exdates",
+          type: "(Date | string)[]",
+          description:
+            "List of individual dates to skip/exclude from occurrence calculations.",
+        },
+        {
+          name: "tzid",
+          type: "string",
+          description:
+            "Timezone identifier for interpreting calendar timestamps.",
+        },
       ],
       rest: "<fieldset>",
     },
     {
       name: "parseRRule, formatRRule, describeRecurrence, occurrences",
       signature:
-        "parseRRule(rule: string): Recurrence; formatRRule(recurrence: Recurrence): string; describeRecurrence(recurrence: Recurrence, start: Date): string; occurrences(recurrence: Recurrence, start: Date, limit: number): Date[]",
+        "parseRRule(rule: string): Recurrence; formatRRule(recurrence: Recurrence, options?: { prefix?: boolean; multiline?: boolean }): string; describeRecurrence(recurrence: Recurrence, start: Date): string; occurrences(recurrence: Recurrence, start: Date, limit: number, options?: { exdates?: (Date | string)[]; tzid?: string }): Date[]",
       description:
-        "Import from @/lib/recurrence to read, write, summarize or expand a rule outside the editor.",
+        "Import from @/lib/recurrence to read, write, summarize or expand a rule outside the editor with unknown parts preservation, BYSETPOS, BYMONTH, and EXDATE support.",
     },
   ],
   "saved-views": [
@@ -1467,19 +2212,26 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           name: "currentData",
           type: "T",
           description:
-            "Current configuration data attached to new views and persisted on save in uncontrolled mode.",
+            "Current configuration data. New views take it, Save writes it to the active view, and isDirty is worked out by comparing it with the active view's data. Keep it structured-cloneable, since Duplicate copies view data with structuredClone.",
+        },
+        {
+          name: "isEqual",
+          type: "(saved: T, current: T) => boolean",
+          default: "isViewDataEqual",
+          description:
+            "Equality rule for dirty tracking. The default is a deep compare that ignores key order and undefined fields. Views with no data are never dirty.",
         },
         {
           name: "isDirty",
           type: "boolean",
-          default: "false",
           description:
-            "Whether the current view has unsaved changes. Shows unsaved indicator and Save/Discard buttons.",
+            "Overrides the computed unsaved state and skips the compare. Shows the unsaved indicator and the Save and Discard buttons. Leave it out to compare currentData with the active view.",
         },
         {
           name: "onSave",
-          type: "(view: SavedView<T>) => void",
-          description: "Called when the Save button is clicked.",
+          type: "(view: SavedView<T>) => void | PromiseLike<unknown>",
+          description:
+            "Called when the Save button is clicked. Return a Promise or other thenable to mark the view pending and undo the change if it rejects or the callback throws.",
         },
         {
           name: "onReset",
@@ -1488,28 +2240,39 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
         },
         {
           name: "onCreate",
-          type: "(view: SavedView<T>) => void",
-          description: "Called when a new view is created.",
+          type: "(view: SavedView<T>) => void | PromiseLike<unknown>",
+          description:
+            "Called when a new view is created. Return a Promise or other thenable to mark the view pending and undo the change if it rejects or the callback throws.",
         },
         {
           name: "onRename",
-          type: "(view: SavedView<T>, newName: string) => void",
-          description: "Called when a view is renamed.",
+          type: "(view: SavedView<T>, newName: string) => void | PromiseLike<unknown>",
+          description:
+            "Called when a view is renamed. Return a Promise or other thenable to mark the view pending and undo the change if it rejects or the callback throws.",
         },
         {
           name: "onDuplicate",
-          type: "(newView: SavedView<T>, sourceView: SavedView<T>) => void",
-          description: "Called when a view is duplicated.",
+          type: "(newView: SavedView<T>, sourceView: SavedView<T>) => void | PromiseLike<unknown>",
+          description:
+            "Called when a view is duplicated. Return a Promise or other thenable to mark the view pending and undo the change if it rejects or the callback throws.",
         },
         {
           name: "onDelete",
-          type: "(deletedViewId: string) => void",
-          description: "Called when a view is deleted.",
+          type: "(deletedViewId: string) => void | PromiseLike<unknown>",
+          description:
+            "Called when a view is deleted. Return a Promise or other thenable to mark the view pending and undo the change if it rejects or the callback throws.",
         },
         {
           name: "onSetDefault",
-          type: "(defaultViewId: string) => void",
-          description: "Called when a view is marked as default.",
+          type: "(defaultViewId: string) => void | PromiseLike<unknown>",
+          description:
+            "Called when a view is marked as default. Return a Promise or other thenable to mark the view pending and undo the change if it rejects or the callback throws.",
+        },
+        {
+          name: "onError",
+          type: '(error: unknown, action: "create" | "rename" | "duplicate" | "delete" | "setDefault" | "save") => void',
+          description:
+            "Called with the rejection reason after a failed change, for logging or a toast. Without it the error goes to console.error. An inline alert is shown either way.",
         },
         {
           name: "variant",
@@ -1569,6 +2332,20 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       signature:
         "createSavedView(name: string, options?: Partial<SavedView<T>>): SavedView<T>; duplicateSavedView(source: SavedView<T>, views: SavedView<T>[]): SavedView<T>; renameSavedView(views: SavedView<T>[], id: string, name: string): SavedView<T>[]; deleteSavedView(views: SavedView<T>[], id: string, activeId?: string): { views: SavedView<T>[]; nextActiveId: string | null }; setDefaultSavedView(views: SavedView<T>[], id: string): SavedView<T>[]",
       description: "Pure logic helpers imported from @/lib/saved-views.",
+    },
+    {
+      name: "isViewDataEqual, isViewDirty",
+      signature:
+        "isViewDataEqual(a: unknown, b: unknown): boolean; isViewDirty(view: SavedView<T> | undefined, currentData: T | undefined, isEqual?: (saved: T, current: T) => boolean): boolean",
+      description:
+        "The dirty tracking rule. Plain objects compare deeply with key order ignored and undefined fields treated as missing. Arrays keep their order, dates compare by time, regular expressions compare by source and flags, Set members and Map values compare deeply, Map keys compare by identity, cyclic data is safe, and objects of different types are never equal. Other class instances compare by own enumerable fields only, so pass isEqual for Temporal, URL and similar types. A view with no data is never dirty.",
+    },
+    {
+      name: "readViewParam, writeViewParam",
+      signature:
+        "readViewParam(search: string | URLSearchParams, views: SavedView<T>[], key?: string): string | undefined; writeViewParam(search: string | URLSearchParams, activeId: string, key?: string): string",
+      description:
+        'Map a ?view= search param to an active id and back, keeping other params. A missing or unknown id resolves to the current default view, or the first view when none is the default, so activeId stays controlled. The active view can then change without onActiveChange (back and forward, or a new default while the URL has no param), so derive the working data from activeId. key defaults to "view".',
     },
   ],
   "secret-field": [
@@ -2005,6 +2782,35 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       rest: "<span>",
     },
   ],
+  "timezone-picker": [
+    {
+      name: "TimezonePicker",
+      description:
+        "A button that opens a searchable list of IANA time zones, each with its UTC offset and current local time. In the list, arrow keys move, Enter selects, and Escape closes it and returns focus to the button.",
+      props: [
+        STATE_PROPS.value("string", "IANA time zone name"),
+        STATE_PROPS.defaultValue("string", '""'),
+        STATE_PROPS.onValueChange(
+          "(value: string) => void",
+          "when a time zone is picked"
+        ),
+        {
+          name: "timeZones",
+          type: "string[]",
+          default: '"every zone the browser supports"',
+          description:
+            'Limits the list to these IANA names. The default comes from Intl.supportedValuesOf("timeZone"), with UTC added if missing and old names such as Asia/Calcutta shown under current ones. Names passed here get the same renaming, and duplicates are dropped.',
+        },
+        {
+          name: "placeholder",
+          type: "string",
+          default: '"Select a time zone"',
+          description: "Shown while no zone is selected.",
+        },
+      ],
+      rest: "<button>",
+    },
+  ],
   tour: [
     {
       name: "Tour",
@@ -2069,6 +2875,82 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           description: "Matches a step's target.",
         },
       ],
+    },
+  ],
+  "trace-waterfall": [
+    {
+      name: "TraceWaterfall",
+      description:
+        "Waterfall timeline displaying distributed request spans as a collapsible tree and duration bars on a shared time axis.",
+      props: [
+        {
+          name: "spans",
+          type: "Span[]",
+          required: true,
+          description:
+            "Array of trace spans with id, parentId?, name, start, duration, status?, service?, color?, attributes?: Record<string, string | number | boolean>.",
+        },
+        {
+          name: "selectedSpanId",
+          type: "string | null",
+          description: "Controlled id of the selected span.",
+        },
+        {
+          name: "defaultSelectedSpanId",
+          type: "string | null",
+          default: "null",
+          description: "Initially selected span id when uncontrolled.",
+        },
+        {
+          name: "onSpanSelect",
+          type: "(span: Span | null) => void",
+          description: "Called when a span is selected or deselected.",
+        },
+        {
+          name: "expandedSpanIds",
+          type: "string[]",
+          description: "Controlled ids of open branches.",
+        },
+        {
+          name: "defaultExpandedSpanIds",
+          type: "string[]",
+          default: "all parent spans",
+          description: "Initially expanded branch ids when uncontrolled.",
+        },
+        {
+          name: "onExpandedChange",
+          type: "(expandedIds: string[]) => void",
+          description: "Called when a branch opens or closes.",
+        },
+        {
+          name: "formatTime",
+          type: "(ms: number) => string",
+          default: "formatDuration",
+          description:
+            "Formats millisecond values for ruler ticks and duration badges.",
+        },
+        {
+          name: "minBarWidth",
+          type: "number",
+          default: "4",
+          description:
+            "Minimum pixel width for bars, ensuring zero-duration spans remain visible.",
+        },
+        {
+          name: "showTimeAxis",
+          type: "boolean",
+          default: "true",
+          description: "Renders the top timeline ruler with time intervals.",
+        },
+        {
+          name: "showGridLines",
+          type: "boolean",
+          default: "true",
+          description:
+            "Renders vertical alignment grid lines across rows matching ruler ticks.",
+        },
+      ],
+      rest: "<div>",
     },
   ],
   "transfer-list": [
@@ -2233,6 +3115,90 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           description: "Skip the node when moving and selecting.",
         },
       ],
+    },
+  ],
+  "uptime-bar": [
+    {
+      name: "UptimeBar",
+      description:
+        "Daily service health segments with uptime percentage, accessible labels and popover details. Keyboard navigation with Arrow keys, Home, and End.",
+      props: [
+        {
+          name: "days",
+          type: "{ date: string | Date; status: UptimeStatus; uptime?: number; note?: string }[]",
+          required: true,
+          description:
+            'Daily status records, oldest first. `status` is "operational", "degraded", "down" or "no-data". `uptime` is a 0 to 100 percentage that overrides the status score, and `note` shows in the popover.',
+        },
+        {
+          name: "title",
+          type: "ReactNode",
+          description: "Service name or header title.",
+        },
+        {
+          name: "showPercentage",
+          type: "boolean",
+          default: "true",
+          description: "Whether to render the calculated uptime percentage.",
+        },
+        {
+          name: "showRangeLabels",
+          type: "boolean",
+          default: "true",
+          description: "Whether to render date range start and end labels.",
+        },
+        {
+          name: "startLabel",
+          type: "ReactNode",
+          default: "`${days.length} days ago`",
+          description: "Custom label for the start of the date range.",
+        },
+        {
+          name: "endLabel",
+          type: "ReactNode",
+          default: '"Today"',
+          description: "Custom label for the end of the date range.",
+        },
+        {
+          name: "degradedWeight",
+          type: "number",
+          default: "0.5",
+          description:
+            "Weight given to degraded days when calculating uptime (0 to 1).",
+        },
+        {
+          name: "decimals",
+          type: "number",
+          default: "2",
+          description: "Number of decimal places in the uptime percentage.",
+        },
+        STATE_PROPS.value("number | null", "open day popover index"),
+        STATE_PROPS.defaultValue("number | null", "null"),
+        STATE_PROPS.onValueChange(
+          "number | null",
+          "the open day popover index changes"
+        ),
+        {
+          name: "renderDayContent",
+          type: "(day: UptimeDay, index: number) => ReactNode",
+          description: "Custom renderer for the popover content.",
+        },
+      ],
+      rest: "<div>",
+    },
+    {
+      name: "UptimeBarLegend",
+      description:
+        "Status legend showing dot indicators and labels for uptime states.",
+      props: [
+        {
+          name: "statuses",
+          type: "UptimeStatus[]",
+          default: '["operational", "degraded", "down", "no-data"]',
+          description: "Status keys to display in the legend.",
+        },
+      ],
+      rest: "<div>",
     },
   ],
   "virtual-list": [

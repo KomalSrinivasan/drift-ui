@@ -140,3 +140,119 @@ export function getActiveSavedView<T>(
   }
   return views.find((v) => v.isDefault) ?? views[0]
 }
+
+export function restoreSavedView<T>(
+  views: SavedView<T>[],
+  view: SavedView<T>,
+  index: number
+): SavedView<T>[] {
+  if (views.some((v) => v.id === view.id)) return views
+  const restored =
+    view.isDefault && views.some((v) => v.isDefault)
+      ? { ...view, isDefault: false }
+      : view
+  const at = Math.min(Math.max(index, 0), views.length)
+  return [...views.slice(0, at), restored, ...views.slice(at)]
+}
+
+function definedKeys(value: object): string[] {
+  return Object.keys(value).filter(
+    (key) => (value as Record<string, unknown>)[key] !== undefined
+  )
+}
+
+export function isViewDataEqual(a: unknown, b: unknown): boolean {
+  return equal(a, b, new WeakMap())
+}
+
+function equal(
+  a: unknown,
+  b: unknown,
+  seen: WeakMap<object, WeakSet<object>>
+): boolean {
+  if (a === b || Object.is(a, b)) return true
+  if (typeof a !== "object" || typeof b !== "object" || !a || !b) return false
+  if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false
+  if (seen.get(a)?.has(b)) return true
+  const pairs = seen.get(a) ?? new WeakSet<object>()
+  seen.set(a, pairs.add(b))
+  const result = equalObjects(a, b, seen)
+  pairs.delete(b)
+  return result
+}
+
+function equalObjects(
+  a: object,
+  b: object,
+  seen: WeakMap<object, WeakSet<object>>
+): boolean {
+  if (a instanceof Date && b instanceof Date) {
+    return a.getTime() === b.getTime()
+  }
+  if (a instanceof RegExp && b instanceof RegExp) {
+    return String(a) === String(b)
+  }
+  if (a instanceof Set && b instanceof Set) {
+    if (a.size !== b.size) return false
+    const unmatched = [...b]
+    return [...a].every((item) => {
+      const index = unmatched.findIndex((other) => equal(item, other, seen))
+      if (index === -1) return false
+      unmatched.splice(index, 1)
+      return true
+    })
+  }
+  if (a instanceof Map && b instanceof Map) {
+    return (
+      a.size === b.size &&
+      [...a].every(
+        ([key, value]) => b.has(key) && equal(value, b.get(key), seen)
+      )
+    )
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return (
+      a.length === b.length && a.every((item, i) => equal(item, b[i], seen))
+    )
+  }
+  const keysA = definedKeys(a)
+  const keysB = definedKeys(b)
+  return (
+    keysA.length === keysB.length &&
+    keysA.every((key) =>
+      equal(
+        (a as Record<string, unknown>)[key],
+        (b as Record<string, unknown>)[key],
+        seen
+      )
+    )
+  )
+}
+
+export function isViewDirty<T>(
+  view: SavedView<T> | undefined,
+  currentData: T | undefined,
+  isEqual: (saved: T, current: T) => boolean = isViewDataEqual
+): boolean {
+  if (view?.data === undefined || currentData === undefined) return false
+  return !isEqual(view.data, currentData)
+}
+
+export function readViewParam<T>(
+  search: string | URLSearchParams,
+  views: SavedView<T>[],
+  key = "view"
+): string | undefined {
+  const id = new URLSearchParams(search).get(key)
+  return getActiveSavedView(views, id)?.id
+}
+
+export function writeViewParam(
+  search: string | URLSearchParams,
+  activeId: string,
+  key = "view"
+): string {
+  const params = new URLSearchParams(search)
+  params.set(key, activeId)
+  return params.toString()
+}

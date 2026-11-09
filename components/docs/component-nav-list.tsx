@@ -44,10 +44,10 @@ function NavLink({
       aria-current={isActive ? "page" : undefined}
       className={cn(
         "relative isolate flex h-8 items-center rounded-md px-3 text-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50",
-        isActive && "font-medium text-foreground"
+        isActive && "font-medium text-brand hover:text-brand"
       )}
     >
-      {isActive && <ActivePill layoutId={pillId} />}
+      {isActive && <ActivePill layoutId={pillId} className="bg-brand/10" />}
       {children}
     </Link>
   )

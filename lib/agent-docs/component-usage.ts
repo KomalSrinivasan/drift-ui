@@ -94,9 +94,35 @@ export function BrandColorField() {
   return <ColorPicker aria-label="Brand color" defaultValue="#6366f1" swatches={["#0f172a", "#6366f1", "#10b981"]} />
 }`,
   },
+  "comment-thread": {
+    notes:
+      "One review thread: top-level comments with one level of replies, @mentions through mention-textarea, edit and delete on the current user's own comments, reactions and resolve. comments: Comment[] with { id, parentId?, author: { id, name, avatarUrl? }, body, createdAt, editedAt?, deleted?, reactions?: { emoji, userIds }[] }. A reply to a reply is shown under the same top-level comment, and a reply whose parent is missing is shown as a top-level comment. Top-level comments render in array order, and each one's replies follow it in array order. Bodies are plain text; @value is highlighted when value is in mentionSuggestions. State: comments/defaultComments/onCommentsChange and resolved/defaultResolved/onResolvedChange. Persistence: onReply(parentId, body, mentions), onEdit(id, body, mentions) and onDelete(id) may return a promise; the thread applies the change only after it resolves and keeps the draft if it rejects. onReactionToggle(id, emoji) fires after the change is applied. Use either onCommentsChange or the event callbacks to update your own list, not both. Leave out currentUser for a read-only thread. Ctrl/Cmd+Enter submits, Escape cancels an edit or reply.",
+    example: `"use client"
+
+import { CommentThread } from "@/components/ui/comment-thread"
+
+const me = { id: "riya", name: "Riya Kapoor" }
+const people = [{ value: "noor", label: "Noor Haddad" }, { value: "riya", label: "Riya Kapoor" }]
+
+export function ReviewThread() {
+  return (
+    <CommentThread
+      currentUser={me}
+      mentionSuggestions={people}
+      defaultComments={[
+        { id: "1", author: { id: "noor", name: "Noor Haddad" }, body: "Retry on 429 too? cc @riya", createdAt: "2026-11-04T09:00:00Z" },
+      ]}
+      onReply={async (parentId, body, mentions) => {
+        const response = await fetch("/api/comments", { method: "POST", body: JSON.stringify({ parentId, body, mentions }) })
+        if (!response.ok) throw new Error("Could not save the comment")
+      }}
+    />
+  )
+}`,
+  },
   "date-time-range": {
     notes:
-      "DateTimeRangePicker with value/defaultValue of { from?: Date, to?: Date } and onValueChange. Start and end times default to 09:00 and 17:00 and are edited with two TimeFields in the popover. locale formats the trigger and picks a 12 or 24 hour clock. presets takes { label, value } items; build them once (useState or useMemo) so the pressed preset still matches after a re-render. min and max disable days outside the bounds and clamp times on the edge days. Editing a day or time never puts the end before the start, and a preset with its end before its start is disabled. The local time zone is shown next to each time; the picker does not convert zones. Other props go to the trigger button, so pass id for a Label. Installs the shadcn calendar and popover and drift's time-field.",
+      'DateTimeRangePicker with value/defaultValue of { from?: Date, to?: Date } and onValueChange. Start and end times default to 09:00 and 17:00 and are edited with two TimeFields in the popover. locale formats the trigger and picks a 12 or 24 hour clock. presets takes { label, value } items; build them once (useState or useMemo) so the pressed preset still matches after a re-render. min and max disable days outside the bounds and clamp times on the edge days. Editing a day or time never puts the end before the start, and a preset with its end before its start is disabled. A "Type a range" field at the top of the popover reads English text: "last 7 days", "past 2 hours", "next 3 days", today, yesterday, tomorrow, weekdays such as "next fri 3pm", "3 days ago", and "A to B" ranges such as "yesterday to now" or "mon 9am to fri 5pm". It previews the parsed range as you type and applies it on Enter. A range that overlaps min or max is clamped to them; text it can\'t read, a range entirely outside min and max, or one ending before it starts leaves the range unchanged and shows a message. A day alone covers the whole day, a moment alone sets only the start. "next fri" is the first Friday after today, "last fri" the first before, and a bare "fri" is today or the coming one. Pass parse(text, now) returning { from, to } or null to support other phrasings or languages, for example with chrono-node. The local time zone is shown next to each time; the picker does not convert zones. Other props go to the trigger button, so pass id for a Label. Installs the shadcn calendar, input and popover and drift\'s time-field.',
     example: `"use client"
 
 import { useState } from "react"
@@ -261,21 +287,22 @@ export function AttachmentsField() {
   },
   "filter-builder": {
     notes:
-      "Chip based filters. fields: FilterField[] with { id, label, type: 'text' | 'number' | 'select', options? }. Value is Filter[] ({ id, fieldId, operator, value }). Use matchesFilter(fieldValue, filter) from @/lib/filter to apply filters to your rows.",
+      "Chip based filters with nested AND/OR groups, date fields, multi-select, and URL serialization. fields: FilterField[] with { id, label, type: 'text' | 'number' | 'select' | 'date', options? }. Value is Filter[] or FilterGroup. Use matchesFilters(row, filters) from @/lib/filter. Scale limit: up to 2 nested levels and 20 filters recommended in UI.",
     example: `"use client"
 
 import { useState } from "react"
 import { FilterBuilder } from "@/components/ui/filter-builder"
-import { matchesFilter, type Filter, type FilterField } from "@/lib/filter"
+import { matchesFilters, type Filter, type FilterField, type FilterGroup } from "@/lib/filter"
 
 const fields: FilterField[] = [
   { id: "status", label: "Status", type: "select", options: [{ value: "open", label: "Open" }, { value: "closed", label: "Closed" }] },
   { id: "title", label: "Title", type: "text" },
+  { id: "due", label: "Due date", type: "date" },
 ]
 
-export function IssueFilters({ issues }: { issues: { status: string; title: string }[] }) {
-  const [filters, setFilters] = useState<Filter[]>([])
-  const visible = issues.filter((issue) => filters.every((filter) => matchesFilter(issue[filter.fieldId as "status" | "title"], filter)))
+export function IssueFilters({ issues }: { issues: { status: string; title: string; due?: string }[] }) {
+  const [filters, setFilters] = useState<Filter[] | FilterGroup>([])
+  const visible = issues.filter((issue) => matchesFilters(issue, filters))
 
   return (
     <div className="grid gap-3">
@@ -335,11 +362,19 @@ export function EmailField() {
   },
   "json-viewer": {
     notes:
-      "Read-only JSON tree built on tree-view, so arrow keys, Home, End and typeahead work. defaultExpandDepth (default 1) opens that many levels. Strings, numbers and booleans use the chart-2, chart-1 and chart-3 tokens mixed with foreground for readable contrast, and null uses muted text. The search field highlights matching keys and values and opens their parents. Each row has pointer-only copy value and copy path buttons, shown on hover or always on touch screens; from the keyboard, Ctrl or Cmd+C copies the focused value and Shift+Ctrl or Cmd+C copies its path, like users[0].name. onCopy(path, value, target) runs after a copy. Arrays over 100 items split into groups of 100 and only open branches render.",
+      "Read-only JSON tree built on tree-view, so arrow keys, Home, End and typeahead work. Pass virtual for large payloads to limit rendered DOM nodes. Search uses deferred value updates to keep the search input responsive. Filter paths using dot notation or wildcards (e.g. users[*].email or *.id) via the pathFilter prop or the toolbar path filter toggle. Long strings exceeding maxStringLength (default 80) or containing newlines truncate with inline Show more and Show less toggles, while copying (hover button or Ctrl/Cmd+C) always copies the full untruncated string. defaultExpandDepth (default 1) controls initial expansion. Strings, numbers and booleans use chart-2, chart-1 and chart-3 tokens mixed with foreground for readable contrast, and null uses muted text. Arrays over 100 items split into groups of 100.",
     example: `import { JsonViewer } from "@/components/ui/json-viewer"
 
 export function WebhookPayload({ payload }: { payload: unknown }) {
-  return <JsonViewer aria-label="Webhook payload" data={payload} defaultExpandDepth={2} />
+  return (
+    <JsonViewer
+      virtual
+      aria-label="Webhook payload"
+      data={payload}
+      defaultExpandDepth={2}
+      className="h-80 w-full"
+    />
+  )
 }`,
   },
   label: {
@@ -353,6 +388,30 @@ export function NameField() {
       <Label htmlFor="name">Display name</Label>
       <Input id="name" />
     </div>
+  )
+}`,
+  },
+  "log-viewer": {
+    notes:
+      "High-throughput virtualized log viewer with ANSI color parsing, search, level filtering, and tail auto-scroll. lines is an array of LogLine ({ id, message, timestamp?, level?, lineNumber? }). parseAnsi converts ANSI escape sequences into styled text spans safely without dangerouslySetInnerHTML. Follow mode auto-scrolls to new lines when at the bottom; scrolling up automatically pauses follow, and clicking the floating Jump to latest button resumes it. Search filters across stripped log messages, levels, and formatted timestamps. Level filter buttons isolate lines by log severity (e.g. error, warn, info, debug) while preserving original line numbers in the gutter. VirtualList ensures smooth 60fps rendering even with tens of thousands of lines.",
+    example: `"use client"
+
+import { LogViewer, type LogLine } from "@/components/ui/log-viewer"
+
+const LOG_LINES: LogLine[] = [
+  { id: "1", timestamp: Date.now() - 3000, level: "info", message: "Build started..." },
+  { id: "2", timestamp: Date.now() - 2000, level: "info", message: "\\u001b[32mCompiled successfully\\u001b[0m in 1.2s" },
+  { id: "3", timestamp: Date.now() - 1000, level: "warn", message: "\\u001b[33mWarning: asset size exceeds recommended budget\\u001b[0m" },
+]
+
+export function BuildLogs() {
+  return (
+    <LogViewer
+      lines={LOG_LINES}
+      height={360}
+      showLineNumbers
+      showTimestamps
+    />
   )
 }`,
   },
@@ -414,6 +473,36 @@ export function RegionsField() {
   )
 }`,
   },
+  "notification-inbox": {
+    notes:
+      "A bell button with an unread count that opens a popover of notifications grouped by day, newest first. items: InboxNotification[] with { id, title, body?, createdAt: Date | string, read?, href?, actor?: { name, avatarUrl? } }; extra fields are kept and passed to renderItem and actions. State: items/defaultItems/onItemsChange and open/defaultOpen/onOpenChange. Clicking an item marks it read, calls onItemClick and closes the popover; an item with href renders as a link. Each row has a Mark as read or Mark as unread button plus any actions ({ label, icon, onSelect }). onMarkRead(ids) and onMarkUnread(ids) fire for single items; Mark all as read fires onMarkAllRead() only, so a server can mark everything read, including items that are not loaded. With a controlled items array, update it in onItemsChange or in those callbacks, not both. renderItem replaces the row content and sits inside the row's button or link, so it must not contain interactive elements; NotificationItem renders the default content. Up and Down arrows, Home and End move between items. Other props go to the trigger button.",
+    example: `"use client"
+
+import * as React from "react"
+import { ArchiveIcon } from "lucide-react"
+
+import { NotificationInbox, type InboxNotification } from "@/components/ui/notification-inbox"
+
+export function Inbox({ initial }: { initial: InboxNotification[] }) {
+  const [items, setItems] = React.useState(initial)
+
+  return (
+    <NotificationInbox
+      items={items}
+      onItemsChange={setItems}
+      onMarkRead={(ids) => fetch("/api/notifications/read", { method: "POST", body: JSON.stringify({ ids }) })}
+      onMarkAllRead={() => fetch("/api/notifications/read-all", { method: "POST" })}
+      actions={[
+        {
+          label: "Archive",
+          icon: <ArchiveIcon className="size-3.5" />,
+          onSelect: (n) => setItems((current) => current.filter((item) => item.id !== n.id)),
+        },
+      ]}
+    />
+  )
+}`,
+  },
   "number-input": {
     notes:
       "Value is number | null. Props: min, max, step, locale, formatOptions (Intl.NumberFormatOptions, e.g. currency), name (submits the raw number through a hidden input). Arrow keys step, Shift or PageUp/PageDown step by 10x, Home/End jump to min/max. Typed text is parsed with the locale's separators.",
@@ -428,6 +517,44 @@ export function BudgetField() {
       step={10}
       locale="de-DE"
       formatOptions={{ style: "currency", currency: "EUR" }}
+    />
+  )
+}`,
+  },
+  "onboarding-checklist": {
+    notes:
+      "A setup guide on account dashboards with a task list, accessible native checkbox controls, action buttons, and a semantic progress bar ('2 of 5 done'). Supports controlled completion via completed and onCompletedChange, and uncontrolled completion initialized with defaultCompleted. Individual item toggle notifications use onItemToggle(item, completed). Collapsible mode supports controlled open/onOpenChange and uncontrolled initialization via defaultOpen. Items take id, title, optional description, and an optional action with label and either onClick or href (rendering a styled button or anchor without asChild).",
+    example: `"use client"
+
+import { useState } from "react"
+import { OnboardingChecklist } from "@/components/ui/onboarding-checklist"
+
+const items = [
+  {
+    id: "profile",
+    title: "Complete your profile",
+    description: "Add your name, role, and timezone.",
+    action: { label: "Edit profile", onClick: () => {} },
+  },
+  {
+    id: "invite",
+    title: "Invite your team",
+    description: "Collaborate with colleagues on shared projects.",
+    action: { label: "Invite", onClick: () => {} },
+  },
+]
+
+export function DashboardChecklist() {
+  const [completed, setCompleted] = useState(["profile"])
+
+  return (
+    <OnboardingChecklist
+      title="Getting started"
+      description="Finish setting up your workspace."
+      items={items}
+      completed={completed}
+      onCompletedChange={setCompleted}
+      collapsible
     />
   )
 }`,
@@ -448,6 +575,49 @@ export function NewPasswordField() {
       <PasswordInput autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
       <PasswordStrength value={password} />
     </div>
+  )
+}`,
+  },
+  "permission-matrix": {
+    notes:
+      "PermissionMatrix maps roles against action permission groups for role-based access control (RBAC). It supports controlled and uncontrolled grants via value/defaultValue and onValueChange (Record<string, string[]> mapping roleId to permissionId[]). Roles support recursive inheritance with inheritsFrom; inherited permissions are highlighted with distinct styling and tooltips. Each group header row features a tri-state checkbox per role reflecting whether all, some, or none of its actions are granted. Sticky headers keep role columns and permission row headers visible during scroll. Fully navigable as a WAI-ARIA grid using Arrow keys, Home, End, PageUp, and PageDown.",
+    example: `"use client"
+
+import * as React from "react"
+import { PermissionMatrix } from "@/components/ui/permission-matrix"
+
+const ROLES = [
+  { id: "viewer", name: "Viewer" },
+  { id: "editor", name: "Editor", inheritsFrom: "viewer" },
+  { id: "admin", name: "Admin", inheritsFrom: "editor" },
+]
+
+const PERMISSIONS = [
+  {
+    id: "docs",
+    name: "Documents",
+    permissions: [
+      { id: "docs.read", name: "Read" },
+      { id: "docs.write", name: "Write" },
+      { id: "docs.delete", name: "Delete" },
+    ],
+  },
+]
+
+export function AccessSettings() {
+  const [grants, setGrants] = React.useState({
+    viewer: ["docs.read"],
+    editor: ["docs.write"],
+    admin: ["docs.delete"],
+  })
+
+  return (
+    <PermissionMatrix
+      roles={ROLES}
+      permissions={PERMISSIONS}
+      value={grants}
+      onValueChange={setGrants}
+    />
   )
 }`,
   },
@@ -517,7 +687,7 @@ export function ReviewScore() {
   },
   "recurrence-editor": {
     notes:
-      "RecurrenceEditor edits an RFC 5545 RRULE string (without the RRULE: prefix) through value/defaultValue and onValueChange. Supports DAILY, WEEKLY with BYDAY, MONTHLY with BYMONTHDAY or an ordinal BYDAY such as 2TU or -1FR, YEARLY, INTERVAL, COUNT and UNTIL. Pass start (a Date) so weekday, month day and preview line up with the event; showPreview={n} lists the next n occurrences. Pure helpers live in @/lib/recurrence: parseRRule, formatRRule, describeRecurrence and occurrences. Installs number-input.",
+      "RecurrenceEditor is a flagship RFC 5545 recurrence rule editor through value/defaultValue and onValueChange. Supports DAILY, WEEKLY with BYDAY, MONTHLY with BYMONTHDAY, ordinal BYDAY (e.g. 2TU, -1FR) and BYSETPOS (e.g. last weekday), YEARLY with BYMONTH, INTERVAL, COUNT, UNTIL, and EXDATE. Retains unhandled calendar parts (WKST, BYHOUR, X-*) without dropping or altering them on round-trip edits. Preserves exact local wall-clock time across daylight saving changes. Pass start (a Date) so weekday, month day, and preview line up with the event; showPreview={n} lists the next n occurrences. Pure helpers live in @/lib/recurrence: parseRRule, formatRRule, describeRecurrence, and occurrences. Installs number-input.",
     example: `"use client"
 
 import { useState } from "react"
@@ -531,32 +701,65 @@ export function StandupRepeat({ start }: { start: Date }) {
   },
   "saved-views": {
     notes:
-      "SavedViews manages named combinations of filters, sorting and columns on table and list screens. For views that store configuration data, manage views and onViewsChange in controlled state, or pass currentData to attach to newly created views; data must be serializable if using duplicate. When isDirty is true, an unsaved indicator appears and Save/Discard buttons show up. Context menu on each view supports Rename (also accessible via F2 or double click), Duplicate, Set as default, and Delete (with safety guards against deleting the last view or locked views). Add button (+) creates a new view. Set variant='select' for a compact dropdown view switcher. Pure helpers live in @/lib/saved-views: createSavedView, duplicateSavedView, renameSavedView, deleteSavedView, and setDefaultSavedView. Installs button, input, badge, and popover.",
+      "SavedViews manages named combinations of filters, sorting and columns on table and list screens. View data should be structured-cloneable, since Duplicate copies it with structuredClone. Pass currentData and the component works out isDirty by comparing it with the active view's data: plain objects compare deeply with key order and undefined fields ignored, arrays keep their order, dates compare by time, regular expressions compare by source and flags, Set members and Map values compare deeply, Map keys compare by identity, and cyclic data is safe. A view with no data is never dirty. Other class instances, such as Temporal or URL objects, need an isEqual of your own. Pass isEqual to change the rule (for filter-builder data, compare serializeFilters output so filter ids don't count), or pass isDirty to override it, which also skips the compare. Save writes currentData to the active view; Discard calls onReset so you can restore view.data. To keep the active view in the URL, pass activeId={readViewParam(searchParams, views)} and write it in onActiveChange with writeViewParam(searchParams, id). A missing or unknown id resolves to the current default view, or the first view when none is the default. Because the active view can change without onActiveChange (browser back and forward, or a new default while the URL has no param), derive the working data from activeId as the example does rather than setting it only in onActiveChange. The component itself has no router code. For server storage, return a Promise (or any thenable) from onCreate, onRename, onDuplicate, onDelete, onSetDefault or onSave. The change shows at once and the view is marked aria-busy, its options menu and rename are blocked until the request settles, and a rejected Promise (or a callback that throws) undoes only that change, shows an inline role=alert message and calls onError(error, action), or logs the error with console.error when there is no onError. Only one set default request runs at a time. Rename works with F2 or double click; delete is blocked for locked views and for the last view that is not still being created. variant='select' gives a compact dropdown. Scale limit, measured in Chrome on a dev build at 4x CPU throttle: moving between tabs takes about 60 ms with 100 views, 115 ms with 200 and 230 ms with 500, and comparing currentData with 2,000 filters takes about 2.5 ms. Keep lists to about 100 views. Pure helpers live in @/lib/saved-views. Installs button, input, badge, and popover.",
     example: `"use client"
 
 import { useState } from "react"
+import { readViewParam, writeViewParam } from "@/lib/saved-views"
 import { SavedViews, type SavedView } from "@/components/ui/saved-views"
 
-const INITIAL_VIEWS: SavedView<{ status: string }>[] = [
-  { id: "all", name: "All Issues", isDefault: true, data: { status: "all" } },
-  { id: "active", name: "Active Sprint", data: { status: "active" } },
-]
+type Filters = { status: string }
 
-export function IssueViewSwitcher() {
-  const [views, setViews] = useState(INITIAL_VIEWS)
-  const [activeId, setActiveId] = useState("all")
-  const [isDirty, setIsDirty] = useState(false)
+const EMPTY: Filters = { status: "all" }
+
+export function IssueViewSwitcher({
+  initialViews,
+  search,
+  onSearchChange,
+}: {
+  initialViews: SavedView<Filters>[]
+  search: string
+  onSearchChange: (search: string) => void
+}) {
+  const [views, setViews] = useState(initialViews)
+  const activeId = readViewParam(search, views)
+  const activeView = views.find((view) => view.id === activeId)
+  const [draft, setDraft] = useState<{ viewId?: string; filters: Filters }>()
+  const filters =
+    draft && draft.viewId === activeId
+      ? draft.filters
+      : (activeView?.data ?? EMPTY)
 
   return (
-    <SavedViews
-      views={views}
-      onViewsChange={setViews}
-      activeId={activeId}
-      onActiveChange={setActiveId}
-      isDirty={isDirty}
-      onSave={(view) => setIsDirty(false)}
-      onReset={(view) => setIsDirty(false)}
-    />
+    <div className="flex flex-col gap-3">
+      <SavedViews
+        views={views}
+        onViewsChange={setViews}
+        activeId={activeId}
+        onActiveChange={(id) => onSearchChange(writeViewParam(search, id))}
+        currentData={filters}
+        onReset={() => setDraft(undefined)}
+        onSave={(view) =>
+          fetch(\`/api/views/\${view.id}\`, {
+            method: "PUT",
+            body: JSON.stringify(view),
+          }).then((res) => {
+            if (!res.ok) throw new Error("Save failed")
+          })
+        }
+      />
+      <select
+        aria-label="Status"
+        value={filters.status}
+        onChange={(event) =>
+          setDraft({ viewId: activeId, filters: { status: event.target.value } })
+        }
+      >
+        <option value="all">All</option>
+        <option value="open">Open</option>
+        <option value="closed">Closed</option>
+      </select>
+    </div>
   )
 }`,
   },
@@ -743,6 +946,20 @@ export function DeployHistory() {
   )
 }`,
   },
+  "timezone-picker": {
+    notes:
+      'TimezonePicker holds an IANA name such as "Asia/Tokyo" through value/defaultValue and onValueChange; an empty string shows the placeholder. The list comes from Intl.supportedValuesOf("timeZone"), sorted by UTC offset, and each row shows the offset and current local time read when the popover opens, so offsets follow daylight saving. Old names that V8 still lists, such as Asia/Calcutta, show under their current names (Asia/Kolkata), and an old name passed as value still marks the right row. Search matches the name with spaces or underscores ("new york" finds America/New_York) and offsets ("+5:30"). timeZones limits the list. It does not default to the browser zone, because the server cannot know it; read Intl.DateTimeFormat().resolvedOptions().timeZone on the client and pass it as value. Remaining props go to the trigger button, so label it with a Label and id or with aria-label.',
+    example: `"use client"
+
+import { useState } from "react"
+import { TimezonePicker } from "@/components/ui/timezone-picker"
+
+export function TimezoneSetting() {
+  const [timeZone, setTimeZone] = useState("Europe/London")
+
+  return <TimezonePicker aria-label="Time zone" value={timeZone} onValueChange={setTimeZone} />
+}`,
+  },
   tour: {
     notes:
       "Wrap the page in Tour with steps: TourStep[] ({ target, title, description?, side? }) and mark elements with TourTarget name matching step.target. open/onOpenChange and step/onStepChange are optional controlled props; onComplete fires after the last step. Focus is trapped in the tour card and returns to the opener on close.",
@@ -763,6 +980,20 @@ export function DashboardTour() {
       <Button variant="ghost" onClick={() => setIsOpen(true)}>Take the tour</Button>
     </Tour>
   )
+}`,
+  },
+  "trace-waterfall": {
+    notes:
+      "Hierarchical trace waterfall visualizing distributed request spans and execution profiles. spans: Span[] with id, parentId?, name, start, duration, status? ('ok' | 'error' | 'warning'), service?, color?. Spans with missing parentId render as root spans. Full WAI-ARIA tree keyboard navigation: ArrowUp/ArrowDown move focus, ArrowRight expands or enters children, ArrowLeft collapses or moves to parent, Home/End jump to first/last span, Enter/Space select. Controlled or uncontrolled with expandedSpanIds/onExpandedChange and selectedSpanId/onSpanSelect. Zero-duration spans render with minBarWidth (default 4px). Bars use --chart-* tokens and bg-destructive for error spans.",
+    example: `import { TraceWaterfall, type Span } from "@/components/ui/trace-waterfall"
+
+const spans: Span[] = [
+  { id: "1", name: "GET /orders", start: 0, duration: 240, service: "gateway" },
+  { id: "2", parentId: "1", name: "SELECT orders", start: 18, duration: 90, status: "error", service: "postgres" },
+]
+
+export function RequestTrace() {
+  return <TraceWaterfall spans={spans} />
 }`,
   },
   "transfer-list": {
@@ -799,6 +1030,20 @@ const items: TreeNode[] = [
 
 export function ProjectTree() {
   return <TreeView aria-label="Project files" items={items} defaultExpanded={["app"]} />
+}`,
+  },
+  "uptime-bar": {
+    notes:
+      "Renders daily service health segments with overall uptime percentage, single tab stop roving keyboard navigation, and popover day details. Days with no data do not count against uptime. Degraded days count as partial uptime via degradedWeight (default 0.5). Arrow keys (ArrowLeft, ArrowRight, Home, End) move focus between segments, and Enter or Space opens the Popover. Theme tokens bg-chart-2 (operational), bg-chart-5 (degraded), bg-destructive (down), and bg-muted (no-data) provide color coding.",
+    example: `import { UptimeBar } from "@/components/ui/uptime-bar"
+
+const days = [
+  { date: "2026-10-30", status: "operational" as const },
+  { date: "2026-10-31", status: "degraded" as const, note: "Elevated API latency" },
+]
+
+export function ServiceHealth() {
+  return <UptimeBar title="API" days={days} />
 }`,
   },
   "use-controllable-state": {

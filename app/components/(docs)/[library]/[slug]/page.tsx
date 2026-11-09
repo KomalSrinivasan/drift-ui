@@ -4,13 +4,12 @@ import { notFound } from "next/navigation"
 import { ApiReference } from "@/components/docs/api-reference"
 import { CodeFrame } from "@/components/docs/code-frame"
 import { ComponentExamples } from "@/components/docs/component-examples"
+import type { NavGroup } from "@/components/docs/component-nav-list"
 import { ComponentHeader } from "@/components/docs/component-header"
 import { DocSection } from "@/components/docs/doc-section"
+import { DocsBar } from "@/components/docs/docs-bar"
 import { InstallPanel } from "@/components/docs/install-panel"
-import {
-  OnThisPage,
-  OnThisPageDisclosure,
-} from "@/components/docs/on-this-page"
+import { KeyboardStrip } from "@/components/docs/keyboard-strip"
 import { Pager } from "@/components/docs/pager"
 import { PreviewStage } from "@/components/docs/preview-stage"
 import { PreviewTabs } from "@/components/docs/preview-tabs"
@@ -19,8 +18,10 @@ import { JsonLd } from "@/components/seo/json-ld"
 import { COMPONENT_API } from "@/lib/agent-docs/component-api"
 import { COMPONENT_USAGE } from "@/lib/agent-docs/component-usage"
 import { toBaseUiItem } from "@/lib/base-ui-registry"
+import { COMPONENT_KEYBOARD } from "@/lib/component-keyboard"
 import {
   CATALOG,
+  CATEGORIES,
   findCategory,
   findEntry,
   findNeighbors,
@@ -43,6 +44,14 @@ import {
   type PrimitiveLibrary,
 } from "@/lib/primitive-library"
 import { siteConfig } from "@/lib/site-config"
+
+const NAV_GROUPS: NavGroup[] = CATEGORIES.map((category) => ({
+  id: category.id,
+  label: category.label,
+  entries: CATALOG.filter((entry) => entry.category === category.id).map(
+    ({ slug, name }) => ({ slug, name })
+  ),
+}))
 
 type ComponentPageProps = {
   params: Promise<{ library: string; slug: string }>
@@ -136,10 +145,12 @@ export default async function ComponentPage({ params }: ComponentPageProps) {
     loadExamples(entry.slug, library),
   ])
   const api = COMPONENT_API[entry.slug]
+  const keyboard = COMPONENT_KEYBOARD[entry.slug]
   const { previous, next } = findNeighbors(entry.slug)
   const sections = [
     { id: "installation", label: "Installation" },
     ...(snippet ? [{ id: "usage", label: "Usage" }] : []),
+    ...(api ? [{ id: "api", label: "API reference" }] : []),
     ...(examples.length > 0
       ? [
           { id: "examples", label: "Examples" },
@@ -150,56 +161,60 @@ export default async function ComponentPage({ params }: ComponentPageProps) {
           })),
         ]
       : []),
-    ...(api ? [{ id: "api", label: "API reference" }] : []),
     { id: "source", label: "Source" },
   ]
 
   return (
-    <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_10rem] xl:gap-12">
-      <main className="flex max-w-4xl min-w-0 flex-col gap-16">
-        <JsonLd schema={buildComponentSchema(entry, library)} />
-        <ComponentHeader entry={entry} library={library} />
-        <div className="-mt-4">
-          <PreviewTabs
-            preview={<PreviewStage entry={entry} library={library} />}
-            usage={usage}
-          />
+    <main className="flex flex-col">
+      <JsonLd schema={buildComponentSchema(entry, library)} />
+      <DocsBar groups={NAV_GROUPS} sections={sections} />
+      <div className="flex flex-col gap-16 pt-10 pb-24 lg:pt-12">
+        <div className="grid gap-x-12 gap-y-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] xl:gap-x-16">
+          <div className="lg:col-start-2 lg:row-start-1">
+            <ComponentHeader
+              entry={entry}
+              library={library}
+              sourceUrl={`${siteConfig.repo}/blob/main/${source.files[0]?.path}`}
+            />
+          </div>
+          <div className="flex flex-col gap-5 lg:sticky lg:top-36 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:max-h-[calc(100dvh-10rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain">
+            <PreviewTabs
+              preview={<PreviewStage entry={entry} library={library} />}
+              usage={usage}
+            />
+            {keyboard && <KeyboardStrip bindings={keyboard} />}
+          </div>
+          <div className="flex min-w-0 flex-col gap-16 lg:col-start-2">
+            <DocSection id="installation" title="Installation">
+              <InstallPanel
+                slug={entry.slug}
+                dependencies={source.dependencies}
+                buildsOn={resolveBuildsOn(entry, library)}
+                installPaths={listInstallPaths(source)}
+              />
+            </DocSection>
+            {snippet && (
+              <DocSection id="usage" title="Usage">
+                <CodeFrame {...snippet} collapsible />
+              </DocSection>
+            )}
+            {api && (
+              <DocSection id="api" title="API reference">
+                <ApiReference parts={api} />
+              </DocSection>
+            )}
+          </div>
         </div>
-        <OnThisPageDisclosure sections={sections} className="-mt-8 xl:hidden" />
-        <DocSection id="installation" title="Installation">
-          <InstallPanel
-            slug={entry.slug}
-            dependencies={source.dependencies}
-            buildsOn={resolveBuildsOn(entry, library)}
-            installPaths={listInstallPaths(source)}
-          />
-        </DocSection>
-        {snippet && (
-          <DocSection id="usage" title="Usage">
-            <CodeFrame {...snippet} collapsible />
-          </DocSection>
-        )}
         {examples.length > 0 && (
-          <DocSection id="examples" title="Examples">
+          <DocSection id="examples" title="Examples" className="border-t pt-16">
             <ComponentExamples examples={examples} />
-          </DocSection>
-        )}
-        {api && (
-          <DocSection id="api" title="API reference">
-            <ApiReference parts={api} />
           </DocSection>
         )}
         <DocSection id="source" title="Source">
           <SourceFiles files={sources} />
         </DocSection>
         <Pager previous={previous} next={next} library={library} />
-      </main>
-      <aside className="hidden xl:block">
-        <OnThisPage
-          sections={sections}
-          sourceUrl={`${siteConfig.repo}/blob/main/${source.files[0]?.path}`}
-        />
-      </aside>
-    </div>
+      </div>
+    </main>
   )
 }

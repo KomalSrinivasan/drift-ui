@@ -17,11 +17,46 @@ const AGENT_FILES = [
   },
 ]
 
+function InlineCode({ text }: { text: string }) {
+  return text.split("`").map((part, index) =>
+    index % 2 === 1 ? (
+      <span key={index} className="text-foreground">
+        {part}
+      </span>
+    ) : (
+      part
+    )
+  )
+}
+
+function PromptLines({ prompt }: { prompt: string }) {
+  return prompt.split("\n").map((line, index) => {
+    const step = /^(\d+)\. (.*)$/.exec(line)
+    if (!line) return <span key={index} className="block h-3" />
+    if (step)
+      return (
+        <span key={index} className="grid grid-cols-[1.75rem_1fr] py-1">
+          <span className="text-brand tabular-nums">
+            {step[1].padStart(2, "0")}
+          </span>
+          <span>
+            <InlineCode text={step[2]} />
+          </span>
+        </span>
+      )
+    return (
+      <span key={index} className="block">
+        <InlineCode text={line} />
+      </span>
+    )
+  })
+}
+
 export function AgentInstallPanel() {
   const prompt = buildAgentPrompt()
 
   return (
-    <div className="reveal overflow-hidden rounded-3xl border bg-card/40 shadow-[0_40px_80px_-48px] shadow-brand-solid/40">
+    <div className="flex h-full flex-col overflow-hidden rounded-3xl border bg-card/40 shadow-[0_40px_80px_-48px] shadow-brand-solid/40">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
         <div className="flex items-center gap-2.5">
           <span className="flex size-7 items-center justify-center rounded-md bg-brand-solid text-brand-solid-foreground [&_svg]:size-3.5">
@@ -42,9 +77,11 @@ export function AgentInstallPanel() {
           copiedLabel="Prompt copied"
         />
       </div>
-      <div className="relative">
-        <pre className="max-h-[26rem] overflow-auto p-5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground sm:text-[13px]">
-          <code>{prompt}</code>
+      <div className="relative flex-1">
+        <pre className="max-h-[24rem] overflow-auto p-5 pb-10 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground sm:text-[13px]">
+          <code>
+            <PromptLines prompt={prompt} />
+          </code>
         </pre>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent" />
       </div>

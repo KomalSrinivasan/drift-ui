@@ -18,6 +18,7 @@ import { BulkActionBarPreview } from "@/components/preview/bulk-action-bar-previ
 import { ButtonPreview } from "@/components/preview/button-preview"
 import { CardPreview } from "@/components/preview/card-preview"
 import { ColorPickerPreview } from "@/components/preview/color-picker-preview"
+import { CommentThreadPreview } from "@/components/preview/comment-thread-preview"
 import { DateTimeRangePreview } from "@/components/preview/date-time-range-preview"
 import { DescriptionListPreview } from "@/components/preview/description-list-preview"
 import { DialogPreview } from "@/components/preview/dialog-preview"
@@ -31,11 +32,15 @@ import { InlineEditPreview } from "@/components/preview/inline-edit-preview"
 import { InputPreview } from "@/components/preview/input-preview"
 import { JsonViewerPreview } from "@/components/preview/json-viewer-preview"
 import { LabelPreview } from "@/components/preview/label-preview"
+import { LogViewerPreview } from "@/components/preview/log-viewer-preview"
 import { MaskedInputPreview } from "@/components/preview/masked-input-preview"
 import { MentionTextareaPreview } from "@/components/preview/mention-textarea-preview"
 import { MultiSelectPreview } from "@/components/preview/multi-select-preview"
+import { NotificationInboxPreview } from "@/components/preview/notification-inbox-preview"
 import { NumberInputPreview } from "@/components/preview/number-input-preview"
+import { OnboardingChecklistPreview } from "@/components/preview/onboarding-checklist-preview"
 import { PasswordInputPreview } from "@/components/preview/password-input-preview"
+import { PermissionMatrixPreview } from "@/components/preview/permission-matrix-preview"
 import { PopoverPreview } from "@/components/preview/popover-preview"
 import { PhoneInputPreview } from "@/components/preview/phone-input-preview"
 import { RatingPreview } from "@/components/preview/rating-preview"
@@ -50,9 +55,12 @@ import { StepperPreview } from "@/components/preview/stepper-preview"
 import { TagsInputPreview } from "@/components/preview/tags-input-preview"
 import { TimeFieldPreview } from "@/components/preview/time-field-preview"
 import { TimelinePreview } from "@/components/preview/timeline-preview"
+import { TimezonePickerPreview } from "@/components/preview/timezone-picker-preview"
 import { TourPreview } from "@/components/preview/tour-preview"
+import { TraceWaterfallPreview } from "@/components/preview/trace-waterfall-preview"
 import { TransferListPreview } from "@/components/preview/transfer-list-preview"
 import { TreeViewPreview } from "@/components/preview/tree-view-preview"
+import { UptimeBarPreview } from "@/components/preview/uptime-bar-preview"
 import { VirtualListPreview } from "@/components/preview/virtual-list-preview"
 
 export const PREVIEWS: Record<string, ComponentType> = {
@@ -63,6 +71,7 @@ export const PREVIEWS: Record<string, ComponentType> = {
   button: ButtonPreview,
   card: CardPreview,
   "color-picker": ColorPickerPreview,
+  "comment-thread": CommentThreadPreview,
   "date-time-range": DateTimeRangePreview,
   "description-list": DescriptionListPreview,
   dialog: DialogPreview,
@@ -76,11 +85,15 @@ export const PREVIEWS: Record<string, ComponentType> = {
   input: InputPreview,
   "json-viewer": JsonViewerPreview,
   label: LabelPreview,
+  "log-viewer": LogViewerPreview,
   "masked-input": MaskedInputPreview,
   "mention-textarea": MentionTextareaPreview,
   "multi-select": MultiSelectPreview,
+  "notification-inbox": NotificationInboxPreview,
   "number-input": NumberInputPreview,
+  "onboarding-checklist": OnboardingChecklistPreview,
   "password-input": PasswordInputPreview,
+  "permission-matrix": PermissionMatrixPreview,
   popover: PopoverPreview,
   "phone-input": PhoneInputPreview,
   rating: RatingPreview,
@@ -95,9 +108,12 @@ export const PREVIEWS: Record<string, ComponentType> = {
   "tags-input": TagsInputPreview,
   "time-field": TimeFieldPreview,
   timeline: TimelinePreview,
+  "timezone-picker": TimezonePickerPreview,
   tour: TourPreview,
+  "trace-waterfall": TraceWaterfallPreview,
   "transfer-list": TransferListPreview,
   "tree-view": TreeViewPreview,
+  "uptime-bar": UptimeBarPreview,
   "virtual-list": VirtualListPreview,
 }
 

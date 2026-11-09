@@ -6,17 +6,21 @@ export function isPackageManager(value: unknown): value is PackageManager {
   return PACKAGE_MANAGERS.includes(value as PackageManager)
 }
 
-export function shadcnAddCommand(packageManager: PackageManager, slug: string) {
+export function shadcnCommand(packageManager: PackageManager, args: string) {
   switch (packageManager) {
     case "pnpm":
-      return `pnpm dlx shadcn@latest add @drift-ui/${slug}`
+      return `pnpm dlx shadcn@latest ${args}`
     case "yarn":
-      return `yarn dlx shadcn@latest add @drift-ui/${slug}`
+      return `yarn dlx shadcn@latest ${args}`
     case "bun":
-      return `bunx --bun shadcn@latest add @drift-ui/${slug}`
+      return `bunx --bun shadcn@latest ${args}`
     case "npm":
-      return `npx shadcn@latest add @drift-ui/${slug}`
+      return `npx shadcn@latest ${args}`
   }
+}
+
+export function shadcnAddCommand(packageManager: PackageManager, slug: string) {
+  return shadcnCommand(packageManager, `add @drift-ui/${slug}`)
 }
 
 export function dependencyInstallCommand(

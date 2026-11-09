@@ -43,7 +43,7 @@ export function LibraryTabs({
             onClick={() => rememberLibrary(item.value)}
             className={cn(
               "flex h-9 items-center gap-2 border-b-2 border-transparent text-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50",
-              isActive && "border-foreground font-medium text-foreground"
+              isActive && "border-brand font-medium text-foreground"
             )}
           >
             <svg

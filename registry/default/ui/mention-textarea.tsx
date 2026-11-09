@@ -232,7 +232,7 @@ function MentionTextarea({
 
   function handleSelect(event: React.SyntheticEvent<HTMLTextAreaElement>) {
     const element = event.currentTarget
-    const { selectionStart, selectionEnd, selectionDirection } = element
+    const { selectionStart, selectionEnd } = element
     // React also fires onSelect on keydown, before the caret moves, so keep
     // the arrow flag until the caret actually changes.
     if (selectionStart === selectionEnd && selectionStart === caret) return
@@ -242,6 +242,11 @@ function MentionTextarea({
       setCaret(selectionStart)
       return
     }
+    normalizeSelection(element, stepped)
+  }
+
+  function normalizeSelection(element: HTMLTextAreaElement, stepped = false) {
+    const { selectionStart, selectionEnd, selectionDirection } = element
     if (selectionStart === selectionEnd) {
       const snapped = snapCaret(ranges, selectionStart, caret, stepped)
       if (snapped !== selectionStart) {
@@ -293,6 +298,8 @@ function MentionTextarea({
     },
     onCompositionEnd: (event: React.CompositionEvent<HTMLTextAreaElement>) => {
       isComposingRef.current = false
+      // The caret wasn't snapped during the composition, so snap it now.
+      normalizeSelection(event.currentTarget)
       onCompositionEnd?.(event)
     },
     onPointerDown: (event: React.PointerEvent<HTMLTextAreaElement>) => {

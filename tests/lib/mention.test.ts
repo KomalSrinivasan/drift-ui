@@ -61,6 +61,16 @@ describe("mention ranges", () => {
       { start: 9, end: 17 },
       { start: 22, end: 26 },
     ])
+    expect(findMentionRanges("@ana..", new Set(["@ana", "@ana."]))).toEqual([
+      { start: 0, end: 5 },
+    ])
+  })
+
+  it("ends a mention at a comma, and reads whole code points after a dot", () => {
+    expect(findMentionRanges("@ana,thanks", tokens)).toEqual([
+      { start: 0, end: 4 },
+    ])
+    expect(findMentionRanges("@ana.\u{20000}", tokens)).toEqual([])
   })
 
   it("skips unknown or partial tokens and mid-word triggers", () => {

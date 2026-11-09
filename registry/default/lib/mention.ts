@@ -64,13 +64,14 @@ const BEFORE_MENTION = /\s/
 const CLOSING_PUNCTUATION = /[.,!?;:)\]}"']/
 const WORD_CHARACTER = /[\p{L}\p{N}_]/u
 
-// A mention ends at whitespace, the end, or punctuation that is not followed by
-// more of a handle, so "@ana." ends at "." but "@ana.leex" does not.
+// A mention ends at whitespace, the end, or closing punctuation. Only "." can
+// continue a handle, so "@ana," and "@ana." end there but "@ana.leex" does not.
 function closesMention(text: string, index: number) {
   if (index === text.length || /\s/.test(text[index])) return true
   if (!CLOSING_PUNCTUATION.test(text[index])) return false
-  const next = text[index + 1]
-  return next === undefined || !WORD_CHARACTER.test(next)
+  if (text[index] !== ".") return true
+  const next = text.codePointAt(index + 1)
+  return next === undefined || !WORD_CHARACTER.test(String.fromCodePoint(next))
 }
 
 export function limitMentionOptions(options: MentionOption[]) {

@@ -165,11 +165,33 @@ describe("MentionTextarea", () => {
     render(<MentionTextarea aria-label="Comment" triggers={TRIGGERS} />)
 
     await user.type(textarea(), "cc @")
-    fireEvent.keyDown(textarea(), { key: "Enter", isComposing: true })
-    fireEvent.keyDown(textarea(), { key: "Enter", keyCode: 229 })
+    expect(
+      fireEvent.keyDown(textarea(), { key: "Enter", isComposing: true })
+    ).toBe(true)
+    expect(fireEvent.keyDown(textarea(), { key: "Enter", keyCode: 229 })).toBe(
+      true
+    )
 
     expect(textarea()).toHaveValue("cc @")
     expect(screen.getAllByRole("option")).toHaveLength(2)
+  })
+
+  it("snaps the caret out of a mention when a composition ends", () => {
+    render(
+      <MentionTextarea
+        aria-label="Comment"
+        triggers={TRIGGERS}
+        defaultValue="hi @noor ok"
+      />
+    )
+
+    fireEvent.compositionStart(textarea())
+    textarea().setSelectionRange(5, 5)
+    fireEvent.select(textarea())
+    expect(textarea().selectionStart).toBe(5)
+
+    fireEvent.compositionEnd(textarea())
+    expect(textarea().selectionStart).toBe(3)
   })
 
   it("loads options from a search and drops stale responses", async () => {

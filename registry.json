@@ -215,6 +215,10 @@
         {
           "path": "registry/default/lib/diff.ts",
           "type": "registry:lib"
+        },
+        {
+          "path": "registry/default/lib/virtual-list.ts",
+          "type": "registry:lib"
         }
       ]
     },

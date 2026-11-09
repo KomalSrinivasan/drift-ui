@@ -277,12 +277,14 @@
 
 .code-block .shiki,
 .code-block .shiki span,
+.code-inline,
 .code-inline span {
   color: var(--shiki-light);
 }
 
 .dark .code-block .shiki,
 .dark .code-block .shiki span,
+.dark .code-inline,
 .dark .code-inline span {
   color: var(--shiki-dark);
 }

@@ -27,16 +27,16 @@ import {
   type CatalogEntry,
 } from "@/lib/catalog"
 import {
+  demoTitle,
   listInstallPaths,
   loadExamples,
-  loadSources,
-  loadUsage,
   loadUsageSnippet,
   resolveBuildsOn,
 } from "@/lib/component-docs"
 import { createPageMetadata } from "@/lib/page-metadata"
 import {
   componentPath,
+  DEFAULT_PRIMITIVE_LIBRARY,
   isPrimitiveLibrary,
   PRIMITIVE_LIBRARIES,
   registryItemPath,
@@ -117,13 +117,11 @@ export async function generateMetadata({
   const entry = findEntry(slug)
   if (!entry || !isPrimitiveLibrary(library)) return {}
 
-  const path = componentPath(entry.slug, library)
-
   return createPageMetadata({
     title: entry.name,
     description: `${entry.description} Install with npx shadcn@latest add @drift-ui/${entry.slug}.`,
-    path,
-    imageBasePath: path,
+    path: componentPath(entry.slug, DEFAULT_PRIMITIVE_LIBRARY),
+    imageBasePath: componentPath(entry.slug, library),
     imageAlt: `${entry.name}, a ${siteConfig.name} component for shadcn/ui`,
   })
 }
@@ -137,9 +135,8 @@ export default async function ComponentPage({ params }: ComponentPageProps) {
   const usageEntry = COMPONENT_USAGE[entry.slug]
   const usageExample =
     (library === "base" && usageEntry?.baseExample) || usageEntry?.example
-  const [usage, sources, snippet, examples] = await Promise.all([
-    loadUsage(entry, library),
-    loadSources(source),
+  const codeSrc = `${componentPath(entry.slug, library)}/code.json`
+  const [snippet, examples] = await Promise.all([
     usageExample && loadUsageSnippet(entry, usageExample),
     loadExamples(entry.slug, library),
   ])
@@ -176,14 +173,16 @@ export default async function ComponentPage({ params }: ComponentPageProps) {
           {
             value: "examples",
             label: `Examples ${examples.length}`,
-            content: <ComponentExamples examples={examples} />,
+            content: <ComponentExamples src={codeSrc} examples={examples} />,
           },
         ]
       : []),
     {
       value: "source",
       label: "Source",
-      content: <SourceFiles files={sources} />,
+      content: (
+        <SourceFiles src={codeSrc} titles={listInstallPaths(source)} />
+      ),
     },
   ]
 
@@ -212,7 +211,7 @@ export default async function ComponentPage({ params }: ComponentPageProps) {
           <>
             <PreviewTabs
               preview={<PreviewStage entry={entry} library={library} />}
-              usage={usage}
+              code={{ src: codeSrc, title: demoTitle(entry.slug) }}
             />
             {keyboard && (
               <div className="shrink-0 border-t bg-muted/30 px-4 py-2.5">

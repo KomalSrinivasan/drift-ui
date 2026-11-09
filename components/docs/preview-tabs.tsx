@@ -6,10 +6,9 @@ import * as m from "motion/react-m"
 import { Tabs as TabsPrimitive } from "radix-ui"
 
 import { cn } from "@/registry/default/lib/utils"
-import { CodeFrame } from "@/components/docs/code-frame"
+import { LazyCodeFrame, type CodeRef } from "@/components/docs/lazy-code-frame"
 import { TabsRail } from "@/components/docs/tabs-rail"
 import { ThemeScopeControl } from "@/components/docs/theme-scope-control"
-import type { HighlightedFile } from "@/lib/component-docs"
 
 const TABS = [
   { value: "preview", label: "Preview" },
@@ -18,11 +17,11 @@ const TABS = [
 
 export function PreviewTabs({
   preview,
-  usage,
+  code,
   compact = false,
 }: {
   preview: React.ReactNode
-  usage: HighlightedFile
+  code: CodeRef
   compact?: boolean
 }) {
   const [tab, setTab] = useState("preview")
@@ -90,7 +89,7 @@ export function PreviewTabs({
         value="code"
         className={cn("outline-none", compact ? "mt-3" : "p-3")}
       >
-        <CodeFrame {...usage} collapsible />
+        <LazyCodeFrame {...code} collapsible />
       </TabsPrimitive.Content>
     </TabsPrimitive.Root>
   )

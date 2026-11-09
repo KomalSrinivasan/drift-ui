@@ -180,9 +180,7 @@ export default async function ComponentPage({ params }: ComponentPageProps) {
     {
       value: "source",
       label: "Source",
-      content: (
-        <SourceFiles src={codeSrc} titles={listInstallPaths(source)} />
-      ),
+      content: <SourceFiles src={codeSrc} titles={listInstallPaths(source)} />,
     },
   ]
 

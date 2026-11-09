@@ -7,7 +7,7 @@ export const examples: ComponentExample[] = [
     id: "secret-values",
     title: "Secret values",
     description:
-      "secretValues masks every value with its own reveal button, so one secret can be checked without showing the rest. Paste KEY=value lines into a key to add several rows at once.",
+      "secretValues masks every value with its own reveal button, so one secret can be checked without showing the rest. Type or paste a value to see it masked, or paste KEY=value lines into a key to add several rows.",
     Preview: KeyValueEditorSecretValuesPreview,
   },
   {

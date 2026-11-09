@@ -12,7 +12,7 @@ import {
   isValidTimeZone,
   listTimezones,
   toCurrentTimezoneName,
-} from "@/registry/default/lib/timezone-picker"
+} from "@/registry/default/lib/timezone-picker.ts"
 import { cn } from "@/registry/default/lib/utils"
 import {
   Popover,

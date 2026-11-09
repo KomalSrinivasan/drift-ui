@@ -16,7 +16,7 @@ import {
   sizeOf,
   truncateString,
   type JsonEntry,
-} from "@/registry/default/lib/json-viewer"
+} from "@/registry/default/lib/json-viewer.ts"
 import { cn } from "@/registry/default/lib/utils"
 import { Input } from "@/registry/default/ui/input"
 import { TreeView, type TreeNode } from "@/registry/default/ui/tree-view"

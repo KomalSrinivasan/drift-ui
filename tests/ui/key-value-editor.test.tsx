@@ -154,6 +154,25 @@ describe("KeyValueEditor", () => {
     expect(screen.getByRole("status")).toHaveTextContent("API_URL_V2,TOKEN")
   })
 
+  it("restores focus for any row id, including quotes and add", async () => {
+    const user = userEvent.setup()
+    render(
+      <KeyValueEditor
+        defaultValue={[
+          { id: 'a"b', key: "A", value: "" },
+          { id: "add", key: "B", value: "" },
+        ]}
+      />
+    )
+
+    await user.click(screen.getByRole("textbox", { name: "Key 1" }))
+    await user.keyboard("{Enter}")
+    expect(screen.getByRole("textbox", { name: "Key 2" })).toHaveFocus()
+
+    await user.click(screen.getByRole("button", { name: "Remove row 2" }))
+    expect(screen.getByRole("textbox", { name: "Key 1" })).toHaveFocus()
+  })
+
   it("forwards className and remaining props to the root", () => {
     render(
       <KeyValueEditor
@@ -164,9 +183,8 @@ describe("KeyValueEditor", () => {
     )
 
     expect(screen.getByTestId("editor")).toHaveClass("max-w-md", "grid")
-    expect(screen.getByTestId("editor")).toHaveAttribute(
-      "aria-label",
-      "Environment variables"
+    expect(screen.getByRole("group", { name: "Environment variables" })).toBe(
+      screen.getByTestId("editor")
     )
   })
 })

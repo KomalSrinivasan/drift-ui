@@ -18,15 +18,27 @@ export function parseEnvLine(line: string) {
   if (equals <= 0) return null
 
   const key = body.slice(0, equals).trim()
-  let value = body.slice(equals + 1).trim()
-  const quote = value[0]
-  if ((quote === '"' || quote === "'") && value.indexOf(quote, 1) > 0) {
-    value = value.slice(1, value.indexOf(quote, 1))
-  } else {
-    // An unquoted value ends at a " #" comment, like dotenv.
-    value = value.replace(/\s+#.*$/, "")
-  }
+  const rest = body.slice(equals + 1).trim()
+  const value = readQuoted(rest) ?? rest.replace(/\s+#.*$/, "")
   return key ? { key, value } : null
+}
+
+// A quoted value up to its closing quote. Double quotes allow \" and \\
+// escapes; single quotes are literal. An unquoted value ends at " #".
+function readQuoted(text: string) {
+  const quote = text[0]
+  if (quote !== '"' && quote !== "'") return null
+  let value = ""
+  for (let index = 1; index < text.length; index++) {
+    const character = text[index]
+    if (character === quote) return value
+    if (quote === '"' && character === "\\" && index + 1 < text.length) {
+      value += text[++index]
+      continue
+    }
+    value += character
+  }
+  return null
 }
 
 export function parseEnv(text: string) {

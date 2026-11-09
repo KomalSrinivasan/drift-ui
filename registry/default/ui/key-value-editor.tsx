@@ -17,6 +17,10 @@ import { PasswordInput } from "@/registry/default/ui/password-input"
 
 const EMPTY_ROWS: KeyValueRow[] = []
 
+// Never equal to a row id, so any id is safe to use.
+const ADD_BUTTON = Symbol("add button")
+type FocusTarget = string | typeof ADD_BUTTON
+
 function KeyValueEditor({
   value,
   defaultValue = EMPTY_ROWS,
@@ -49,16 +53,27 @@ function KeyValueEditor({
   })
   const rootRef = React.useRef<HTMLDivElement>(null)
   // Where focus goes after the next render: a row's key input, or the add button.
-  const pendingFocus = React.useRef<string | null>(null)
+  const pendingFocus = React.useRef<FocusTarget | null>(null)
   const baseId = React.useId()
   const duplicates = findDuplicateKeys(rows)
 
-  function focusTarget(target: string) {
-    rootRef.current
+  function focusTarget(target: FocusTarget) {
+    const root = rootRef.current
+    if (!root) return
+    // Compared, not interpolated into a selector, so any id works.
+    const container =
+      target === ADD_BUTTON
+        ? root
+        : [
+            ...root.querySelectorAll<HTMLElement>(
+              '[data-slot="key-value-editor-row"]'
+            ),
+          ].find((row) => row.dataset.rowId === target)
+    container
       ?.querySelector<HTMLElement>(
-        target === "add"
+        target === ADD_BUTTON
           ? '[data-slot="key-value-editor-add"]'
-          : `[data-row-id="${target}"] [data-slot="key-value-editor-key"]`
+          : '[data-slot="key-value-editor-key"]'
       )
       ?.focus()
   }
@@ -82,7 +97,7 @@ function KeyValueEditor({
 
   function removeRow(index: number) {
     const neighbour = rows[index + 1] ?? rows[index - 1]
-    pendingFocus.current = neighbour ? neighbour.id : "add"
+    pendingFocus.current = neighbour ? neighbour.id : ADD_BUTTON
     setRows(rows.filter((_, rowIndex) => rowIndex !== index))
   }
 
@@ -110,6 +125,7 @@ function KeyValueEditor({
   return (
     <div
       ref={rootRef}
+      role="group"
       data-slot="key-value-editor"
       className={cn("grid gap-2", className)}
       {...props}

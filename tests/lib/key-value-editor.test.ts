@@ -37,6 +37,21 @@ describe("parseEnv", () => {
     ])
   })
 
+  it("reads escaped quotes inside double quotes and keeps single quotes literal", () => {
+    expect(
+      parseEnv(
+        String.raw`TOKEN="a\"b\\c" # note` + "\n" + String.raw`RAW='a\"b'`
+      )
+    ).toEqual([
+      { key: "TOKEN", value: 'a"b\\c' },
+      { key: "RAW", value: 'a\\"b' },
+    ])
+  })
+
+  it("treats an unclosed quote as part of the value", () => {
+    expect(parseEnv('NAME="Ada')).toEqual([{ key: "NAME", value: '"Ada' }])
+  })
+
   it("skips lines without a key or an equals sign, and handles CRLF", () => {
     expect(parseEnv("=value\nJUST_TEXT\r\nEMPTY=\r\n")).toEqual([
       { key: "EMPTY", value: "" },

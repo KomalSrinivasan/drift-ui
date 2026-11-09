@@ -10,7 +10,7 @@ import {
   toggleAll,
   toggleValue,
   type MultiSelectOption,
-} from "@/registry/default/lib/multi-select"
+} from "@/registry/default/lib/multi-select.ts"
 import { useControllableState } from "@/registry/default/hooks/use-controllable-state"
 import { Badge } from "@/registry/default/ui/badge"
 import {

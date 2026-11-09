@@ -21,7 +21,7 @@ import {
   type RangeEdge,
   type RangeParser,
   type TypedRangeResult,
-} from "@/registry/default/lib/date-time-range"
+} from "@/registry/default/lib/date-time-range.ts"
 import { cn } from "@/registry/default/lib/utils"
 import { useControllableState } from "@/registry/default/hooks/use-controllable-state"
 import { Button, buttonVariants } from "@/registry/default/ui/button"

@@ -17,7 +17,7 @@ import {
   type SignatureInk,
   type SignaturePoint,
   type SignatureStroke,
-} from "@/registry/default/lib/signature-pad"
+} from "@/registry/default/lib/signature-pad.ts"
 import { cn } from "@/registry/default/lib/utils"
 import { Button } from "@/registry/default/ui/button"
 import { Input } from "@/registry/default/ui/input"

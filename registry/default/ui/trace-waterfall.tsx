@@ -14,12 +14,13 @@ import {
   getServiceColors,
   stepSpanRow,
   type Span,
+  type SpanStatus,
   type TimeTick,
   type TraceBounds,
-} from "@/registry/default/lib/trace-waterfall"
+} from "@/registry/default/lib/trace-waterfall.ts"
 import { cn } from "@/registry/default/lib/utils"
 
-export type { Span, SpanStatus } from "@/registry/default/lib/trace-waterfall"
+export type { Span, SpanStatus }
 
 export type TraceWaterfallProps = Omit<
   React.ComponentProps<"div">,

@@ -22,7 +22,7 @@ import {
   type InboxNotification,
   type NotificationActor,
   type NotificationGroup,
-} from "@/registry/default/lib/notification-inbox"
+} from "@/registry/default/lib/notification-inbox.ts"
 import { cn } from "@/registry/default/lib/utils"
 import {
   Avatar,

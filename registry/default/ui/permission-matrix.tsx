@@ -26,7 +26,7 @@ import {
   type PermissionGroup,
   type PermissionRole,
   type PermissionStatus,
-} from "@/registry/default/lib/permission-matrix"
+} from "@/registry/default/lib/permission-matrix.ts"
 
 export type {
   PermissionAction,

@@ -10,7 +10,7 @@ import {
   isItemCompleted,
   toggleItem,
   type OnboardingChecklistProgress,
-} from "@/registry/default/lib/onboarding-checklist"
+} from "@/registry/default/lib/onboarding-checklist.ts"
 import { cn } from "@/registry/default/lib/utils"
 import { Button, buttonVariants } from "@/registry/default/ui/button"
 import {

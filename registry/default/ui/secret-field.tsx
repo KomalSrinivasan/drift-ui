@@ -5,7 +5,10 @@ import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon } from "lucide-react"
 
 import { useControllableState } from "@/registry/default/hooks/use-controllable-state"
 import { useCopyToClipboard } from "@/registry/default/hooks/use-copy-to-clipboard"
-import { getVisibleTail, maskSecret } from "@/registry/default/lib/secret-field"
+import {
+  getVisibleTail,
+  maskSecret,
+} from "@/registry/default/lib/secret-field.ts"
 import { cn } from "@/registry/default/lib/utils"
 
 const BUTTON_CLASS_NAME =

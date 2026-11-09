@@ -1119,6 +1119,12 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           description: "Initial search query when uncontrolled.",
         },
         {
+          name: "defaultWrap",
+          type: "boolean",
+          default: "false",
+          description: "Initial line wrap state when uncontrolled.",
+        },
+        {
           name: "emptyMessage",
           type: "ReactNode",
           default: '"No log lines matching criteria"',
@@ -1170,6 +1176,11 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           description: "Called when search query changes.",
         },
         {
+          name: "onWrapChange",
+          type: "(wrap: boolean) => void",
+          description: "Called when line wrap is toggled.",
+        },
+        {
           name: "rowHeight",
           type: "number",
           default: "24",
@@ -1199,6 +1210,12 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           default: "true",
           description:
             "Whether to display timestamps if present in the log line.",
+        },
+        {
+          name: "wrap",
+          type: "boolean",
+          description:
+            "Controlled line wrap. When false, long messages scroll sideways in one shared viewport; when true, they wrap onto extra lines.",
         },
       ],
       rest: "<div>",
@@ -2927,7 +2944,7 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           type: "(ms: number) => string",
           default: "formatDuration",
           description:
-            "Formats millisecond values for ruler ticks and duration badges.",
+            "Formats millisecond values for ruler ticks, row durations and the details panel.",
         },
         {
           name: "minBarWidth",
@@ -2948,6 +2965,13 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           default: "true",
           description:
             "Renders vertical alignment grid lines across rows matching ruler ticks.",
+        },
+        {
+          name: "showSpanDetails",
+          type: "boolean",
+          default: "true",
+          description:
+            "Shows a panel under the waterfall with the selected span's timing, status and attributes. Turn off when you render your own panel from onSpanSelect.",
         },
       ],
       rest: "<div>",

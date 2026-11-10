@@ -185,9 +185,40 @@ describe("UnitInput", () => {
     expect(field()).toHaveAttribute("placeholder", "Quota")
   })
 
-  it("disables the field and the select", () => {
-    render(<UnitInput aria-label="Memory" disabled />)
+  it("disables the field, the select and the submitted value", () => {
+    const { container } = render(
+      <form>
+        <UnitInput
+          aria-label="Memory"
+          name="memory"
+          defaultValue={1}
+          disabled
+        />
+      </form>
+    )
     expect(field()).toBeDisabled()
     expect(unitSelect()).toBeDisabled()
+    const form = container.querySelector("form") as HTMLFormElement
+    expect(new FormData(form).has("memory")).toBe(false)
+  })
+
+  it("ignores step and jump keys when readOnly", async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <UnitInput
+        aria-label="Memory"
+        defaultValue={5}
+        defaultUnit="B"
+        min={0}
+        max={10}
+        readOnly
+        onValueChange={onValueChange}
+      />
+    )
+    await user.click(field())
+    await user.keyboard("{ArrowUp}{PageDown}{Home}{End}")
+    expect(field()).toHaveValue("5")
+    expect(onValueChange).not.toHaveBeenCalled()
   })
 })

@@ -98,7 +98,7 @@ function UnitInput({
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     onKeyDown?.(event)
-    if (event.defaultPrevented) return
+    if (event.defaultPrevented || props.readOnly) return
 
     const largeStep = step * LARGE_STEP_MULTIPLIER
     const stepAmount = event.shiftKey ? largeStep : step
@@ -187,7 +187,14 @@ function UnitInput({
           </option>
         ))}
       </select>
-      {name && <input type="hidden" name={name} value={currentValue ?? ""} />}
+      {name && (
+        <input
+          type="hidden"
+          name={name}
+          disabled={disabled}
+          value={currentValue ?? ""}
+        />
+      )}
     </div>
   )
 }

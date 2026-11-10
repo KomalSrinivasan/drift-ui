@@ -16,7 +16,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/default/lib/activity-heatmap.ts",
+          "path": "registry/default/lib/activity-heatmap-utils.ts",
           "type": "registry:lib"
         }
       ]

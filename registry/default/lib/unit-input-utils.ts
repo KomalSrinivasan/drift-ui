@@ -20,9 +20,9 @@ export const BINARY_BYTE_UNITS: Unit[] = [
   { id: "TiB", label: "TiB", factor: 1024 ** 4 },
 ]
 
-// Trims float noise such as 0.1 * 3 = 0.30000000000000004.
+// Trims float noise such as 0.1 * 3 = 0.30000000000000004, leaving exact integers alone.
 function clean(value: number) {
-  return Number(value.toPrecision(12))
+  return Number.isSafeInteger(value) ? value : Number(value.toPrecision(15))
 }
 
 export function toBase(amount: number, unit: Unit) {
@@ -40,6 +40,8 @@ export function clampValue(value: number, min?: number, max?: number) {
 export function formatAmount(amount: number) {
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 6,
+    maximumSignificantDigits: 6,
+    roundingPriority: "morePrecision",
     useGrouping: false,
   }).format(amount)
 }
@@ -59,13 +61,15 @@ export function parseUnitText(
   text: string,
   units: Unit[]
 ): { amount: number; unit?: Unit } | null {
-  const match = /^\s*(-?(?:\d+\.?\d*|\.\d+))\s*([^\d\s.-][^\s]*)?\s*$/.exec(
-    text.replace(/,/g, "")
-  )
+  const match =
+    /^\s*(-?(?:\d{1,3}(?:,\d{3})+(?:\.\d*)?|\d+\.?\d*|\.\d+))\s*([^\d\s.,-][^\s]*)?\s*$/.exec(
+      text
+    )
   if (!match) return null
 
-  const amount = Number(match[1])
-  if (!Number.isFinite(amount)) return null
+  const amount = Number(match[1].replace(/,/g, ""))
+  if (!Number.isFinite(amount) || Math.abs(amount) > Number.MAX_SAFE_INTEGER)
+    return null
   if (!match[2]) return { amount }
 
   const unit = findUnit(units, match[2])

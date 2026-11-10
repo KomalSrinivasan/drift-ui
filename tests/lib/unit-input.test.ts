@@ -24,6 +24,12 @@ describe("unit-input logic", () => {
     expect(toBase(1, MIB)).toBe(1_048_576)
   })
 
+  it("keeps large integer base values exact", () => {
+    expect(fromBase(1_234_567_890_123, BYTE_UNITS[0])).toBe(1_234_567_890_123)
+    expect(toBase(1_234_567_890_123, BYTE_UNITS[0])).toBe(1_234_567_890_123)
+    expect(toBase(1.1, GB)).toBe(1_100_000_000)
+  })
+
   it("finds units by id or label, exact match first", () => {
     const units = [
       { id: "Mb", label: "Mb", factor: 125_000 },
@@ -51,6 +57,23 @@ describe("unit-input logic", () => {
     expect(parseUnitText("abc", BYTE_UNITS)).toBeNull()
     expect(parseUnitText("1.2.3", BYTE_UNITS)).toBeNull()
     expect(parseUnitText("", BYTE_UNITS)).toBeNull()
+    expect(parseUnitText("1,2", BYTE_UNITS)).toBeNull()
+    expect(parseUnitText("12,34", BYTE_UNITS)).toBeNull()
+    expect(parseUnitText("1,234,56", BYTE_UNITS)).toBeNull()
+  })
+
+  it("accepts three-digit comma groups", () => {
+    expect(parseUnitText("1,234,567.5 MB", BYTE_UNITS)).toEqual({
+      amount: 1_234_567.5,
+      unit: MB,
+    })
+  })
+
+  it("rejects integers past the safe range", () => {
+    expect(parseUnitText("9007199254740993", BYTE_UNITS)).toBeNull()
+    expect(parseUnitText("9007199254740991", BYTE_UNITS)).toEqual({
+      amount: Number.MAX_SAFE_INTEGER,
+    })
   })
 
   it("picks the largest unit that keeps the number at 1 or more", () => {
@@ -67,5 +90,7 @@ describe("unit-input logic", () => {
     expect(formatAmount(0.5)).toBe("0.5")
     expect(formatAmount(1_000_000)).toBe("1000000")
     expect(formatAmount(1 / 3)).toBe("0.333333")
+    expect(formatAmount(1e-9)).toBe("0.000000001")
+    expect(formatAmount(1_234_567_890_123)).toBe("1234567890123")
   })
 })

@@ -172,7 +172,10 @@ export const COMPONENT_KEYBOARD: Record<string, KeyBinding[]> = {
   ],
   "unit-input": [
     { keys: UP_DOWN, action: "Step the number in the current unit" },
-    { keys: ["Shift", ...PAGE], action: "Step by ten" },
+    {
+      keys: ["Shift+ArrowUp", "Shift+ArrowDown", ...PAGE],
+      action: "Step by ten",
+    },
     { keys: HOME_END, action: "Jump to min or max" },
     { keys: ["Enter"], action: "Apply typed text such as 2gb" },
   ],

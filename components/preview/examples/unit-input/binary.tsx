@@ -13,7 +13,7 @@ export function UnitInputBinaryPreview() {
         defaultUnit="GiB"
       />
       <p className="text-xs text-muted-foreground">
-        Kubernetes style quantities, so 2 GiB is 2,147,483,648 bytes.
+        Binary scaling by 1024, so 2 GiB is 2,147,483,648 bytes.
       </p>
     </div>
   )

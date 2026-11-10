@@ -8,7 +8,7 @@ export const examples: ComponentExample[] = [
     id: "binary",
     title: "Binary units",
     description:
-      "BINARY_BYTE_UNITS steps by 1024, for Kubernetes and operating system quantities.",
+      "BINARY_BYTE_UNITS steps by 1024, for operating system quantities.",
     Preview: UnitInputBinaryPreview,
   },
   {

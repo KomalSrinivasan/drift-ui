@@ -7,7 +7,7 @@ import { Label } from "@/registry/default/ui/label"
 import { UnitInput } from "@/registry/default/ui/unit-input"
 
 export function UnitInputFormPreview() {
-  const [submitted, setSubmitted] = React.useState("")
+  const [submitted, setSubmitted] = React.useState<string | null>(null)
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -25,7 +25,7 @@ export function UnitInputFormPreview() {
       <Button type="submit" className="mt-1">
         Save
       </Button>
-      {submitted && (
+      {submitted !== null && (
         <p className="font-mono text-xs text-muted-foreground">
           upload_cap={submitted}
         </p>

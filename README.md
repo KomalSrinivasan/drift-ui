@@ -31,6 +31,8 @@ npx shadcn add @drift-ui/theme @drift-ui/tags-input @drift-ui/tree-view
 
 The CLI picks a build from the `style` in your `components.json`. A `base-` style such as `base-nova` gets the Base UI build, which never installs `radix-ui`, and any other style gets Radix. A `@drift-ui` entry under `registries` in `components.json` overrides the directory, so if you registered the older `/r/{name}.json` URL you will keep getting Radix until you delete that entry.
 
+The same `style` picks the shape tokens. Components that need them depend on `@drift-ui/shape`, which adds control height, corner and shadow tokens to the `@theme inline` block in your CSS. A shadcn create style such as `radix-nova` or `base-lyra` gets the matching values for Vega, Nova, Maia, Lyra, Mira, Luma, Sera or Rhea, and any other style, including `new-york`, gets Vega. To switch styles later, change `style` in `components.json` and run `npx shadcn add @drift-ui/shape` again. Try each style on [/themes](https://drift-ui.dev/themes) before you install.
+
 ### For AI agents
 
 The site serves [`/llms.txt`](https://drift-ui.dev/llms.txt) with an index of the registry and [`/llms-full.txt`](https://drift-ui.dev/llms-full.txt) with install commands, usage notes and examples for every component.

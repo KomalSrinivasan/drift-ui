@@ -547,6 +547,85 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       ],
     },
   ],
+  "csv-importer": [
+    {
+      name: "CsvImporter",
+      description:
+        "Multi-step CSV import wizard with file upload, column mapping, data validation with inline cell fixing, and import confirmation.",
+      rest: "<div>",
+      props: [
+        {
+          name: "fields",
+          type: "CsvField[]",
+          required: true,
+          description:
+            "Target application field definitions with id, label, required flag, description, validate function, and transform function.",
+        },
+        {
+          name: "onComplete",
+          type: "(rows: Record<string, unknown>[]) => void",
+          required: true,
+          description:
+            "Called when import is confirmed with clean, validated, and transformed row objects.",
+        },
+        {
+          name: "onCancel",
+          type: "() => void",
+          description:
+            "Called when the user resets or cancels the import process.",
+        },
+        {
+          name: "maxRows",
+          type: "number",
+          default: "10000",
+          description:
+            "Maximum number of data rows to parse on the main thread.",
+        },
+        {
+          name: "maxFileSize",
+          type: "number",
+          default: "10485760",
+          description: "Maximum file size in bytes (defaults to 10 MB).",
+        },
+        {
+          name: "sampleRowsCount",
+          type: "number",
+          default: "3",
+          description:
+            "Number of sample row values to preview in the column mapping step.",
+        },
+        {
+          name: "autoMap",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether to automatically suggest column mappings matching CSV headers against field ids and labels.",
+        },
+        {
+          name: "step",
+          type: "number",
+          description: "Controlled active step index (0 to 3).",
+        },
+        {
+          name: "defaultStep",
+          type: "number",
+          default: "0",
+          description: "Initial active step index when uncontrolled.",
+        },
+        {
+          name: "onStepChange",
+          type: "(step: number) => void",
+          description: "Called when the active step index changes.",
+        },
+        {
+          name: "defaultFile",
+          type: "File",
+          description:
+            "Optional initial File object to automatically parse upon mount.",
+        },
+      ],
+    },
+  ],
   "date-time-range": [
     {
       name: "DateTimeRangePicker",
@@ -3323,6 +3402,72 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
           description: "Skip the node when moving and selecting.",
         },
       ],
+    },
+  ],
+  "unit-input": [
+    {
+      name: "UnitInput",
+      description:
+        "A spinbutton text field with a unit select. The value stays in the base unit, and changing the unit only changes what is on screen.",
+      props: [
+        STATE_PROPS.value("number | null", "value in the base unit"),
+        STATE_PROPS.defaultValue("number | null", "null"),
+        STATE_PROPS.onValueChange(
+          "(value: number | null) => void",
+          "with the value in the base unit, or null when cleared"
+        ),
+        {
+          name: "units",
+          type: "{ id: string; label: string; factor: number }[]",
+          default: "BYTE_UNITS",
+          description:
+            "Units to pick from. factor is how many base units one of it holds.",
+        },
+        {
+          name: "unit",
+          type: "string",
+          description: "Controlled unit id.",
+        },
+        {
+          name: "defaultUnit",
+          type: "string",
+          description:
+            "Initial unit id when uncontrolled. Defaults to the largest unit that keeps the number at 1 or more.",
+        },
+        {
+          name: "onUnitChange",
+          type: "(unit: string) => void",
+          description:
+            "Called with the unit id when the select or typed text changes it.",
+        },
+        {
+          name: "min",
+          type: "number",
+          description: "Minimum value in the base unit.",
+        },
+        {
+          name: "max",
+          type: "number",
+          description: "Maximum value in the base unit.",
+        },
+        {
+          name: "step",
+          type: "number",
+          default: "1",
+          description: "Arrow key step, in the current unit.",
+        },
+        {
+          name: "disabled",
+          type: "boolean",
+          description: "Disables the field and the unit select.",
+        },
+        {
+          name: "name",
+          type: "string",
+          description: "Submits the base value through a hidden input.",
+        },
+      ],
+      rest: "<input>",
     },
   ],
   "uptime-bar": [

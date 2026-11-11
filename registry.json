@@ -186,7 +186,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/default/lib/csv-importer.ts",
+          "path": "registry/default/lib/csv-importer-utils.ts",
           "type": "registry:lib"
         }
       ]

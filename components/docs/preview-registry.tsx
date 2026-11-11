@@ -20,6 +20,7 @@ import { ButtonPreview } from "@/components/preview/button-preview"
 import { CardPreview } from "@/components/preview/card-preview"
 import { ColorPickerPreview } from "@/components/preview/color-picker-preview"
 import { CommentThreadPreview } from "@/components/preview/comment-thread-preview"
+import { CsvImporterPreview } from "@/components/preview/csv-importer-preview"
 import { DateTimeRangePreview } from "@/components/preview/date-time-range-preview"
 import { DescriptionListPreview } from "@/components/preview/description-list-preview"
 import { DialogPreview } from "@/components/preview/dialog-preview"
@@ -62,6 +63,7 @@ import { TourPreview } from "@/components/preview/tour-preview"
 import { TraceWaterfallPreview } from "@/components/preview/trace-waterfall-preview"
 import { TransferListPreview } from "@/components/preview/transfer-list-preview"
 import { TreeViewPreview } from "@/components/preview/tree-view-preview"
+import { UnitInputPreview } from "@/components/preview/unit-input-preview"
 import { UptimeBarPreview } from "@/components/preview/uptime-bar-preview"
 import { VirtualListPreview } from "@/components/preview/virtual-list-preview"
 
@@ -75,6 +77,7 @@ export const PREVIEWS: Record<string, ComponentType> = {
   card: CardPreview,
   "color-picker": ColorPickerPreview,
   "comment-thread": CommentThreadPreview,
+  "csv-importer": CsvImporterPreview,
   "date-time-range": DateTimeRangePreview,
   "description-list": DescriptionListPreview,
   dialog: DialogPreview,
@@ -117,6 +120,7 @@ export const PREVIEWS: Record<string, ComponentType> = {
   "trace-waterfall": TraceWaterfallPreview,
   "transfer-list": TransferListPreview,
   "tree-view": TreeViewPreview,
+  "unit-input": UnitInputPreview,
   "uptime-bar": UptimeBarPreview,
   "virtual-list": VirtualListPreview,
 }

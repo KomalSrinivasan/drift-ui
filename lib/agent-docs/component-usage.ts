@@ -140,6 +140,33 @@ export function ReviewThread() {
   )
 }`,
   },
+  "csv-importer": {
+    notes:
+      "Multi-step CSV import workflow component. Composes file-dropzone for upload, stepper for the 4-step wizard, and virtual-list for reviewing and fixing invalid rows. Parses CSV in the browser with support for quotes, newlines, escaped quotes, CRLF, and UTF-8 BOM. Auto-suggests column mappings case-insensitively, and validates rows inline with custom rules. Props: fields: CsvField[], onComplete: (rows: Record<string, any>[]) => void, onCancel?, maxRows? (default 10000), maxFileSize? (default 10MB), sampleRowsCount? (default 3), autoMap? (default true), step/defaultStep/onStepChange, defaultFile?.",
+    example: `"use client"
+
+import { CsvImporter } from "@/components/ui/csv-importer"
+
+export function CustomerImport() {
+  return (
+    <CsvImporter
+      fields={[
+        { id: "name", label: "Full Name", required: true },
+        {
+          id: "email",
+          label: "Email",
+          required: true,
+          validate: (val) => (val.includes("@") ? true : "Invalid email address"),
+        },
+        { id: "role", label: "Role" },
+      ]}
+      onComplete={(rows) => {
+        console.log("Imported clean rows:", rows)
+      }}
+    />
+  )
+}`,
+  },
   "date-time-range": {
     notes:
       'DateTimeRangePicker with value/defaultValue of { from?: Date, to?: Date } and onValueChange. Start and end times default to 09:00 and 17:00 and are edited with two TimeFields in the popover. locale formats the trigger and picks a 12 or 24 hour clock. presets takes { label, value } items; build them once (useState or useMemo) so the pressed preset still matches after a re-render. min and max disable days outside the bounds and clamp times on the edge days. Editing a day or time never puts the end before the start, and a preset with its end before its start is disabled. A "Type a range" field at the top of the popover reads English text: "last 7 days", "past 2 hours", "next 3 days", today, yesterday, tomorrow, weekdays such as "next fri 3pm", "3 days ago", and "A to B" ranges such as "yesterday to now" or "mon 9am to fri 5pm". It previews the parsed range as you type and applies it on Enter. A range that overlaps min or max is clamped to them; text it can\'t read, a range entirely outside min and max, or one ending before it starts leaves the range unchanged and shows a message. A day alone covers the whole day, a moment alone sets only the start. "next fri" is the first Friday after today, "last fri" the first before, and a bare "fri" is today or the coming one. Pass parse(text, now) returning { from, to } or null to support other phrasings or languages, for example with chrono-node. The local time zone is shown next to each time; the picker does not convert zones. Other props go to the trigger button, so pass id for a Label. Installs the shadcn calendar, input and popover and drift\'s time-field.',
@@ -1072,6 +1099,32 @@ const items: TreeNode[] = [
 
 export function ProjectTree() {
   return <TreeView aria-label="Project files" items={items} defaultExpanded={["app"]} />
+}`,
+  },
+  "unit-input": {
+    notes:
+      "Number field plus a native unit select for memory limits, storage quotas, upload caps and bandwidth. value and onValueChange take number | null in the base unit (bytes for the presets), so the parent never converts. A unit is { id, label, factor }, where factor is how many base units one of it holds. BYTE_UNITS (B, KB, MB, GB, TB, powers of 1000) and BINARY_BYTE_UNITS (B, KiB, MiB, GiB, TiB, powers of 1024) are exported from the lib file, and units defaults to BYTE_UNITS. Changing the unit converts the number on screen and leaves the stored value alone, so 512 MB becomes 0.512 GB. Typing 2gb or 512 MiB sets the unit as well as the number, matched against unit ids and labels, case-insensitive. Typed units must be a single word, so give multiword labels a short id such as GBps. defaultUnit, or unit with onUnitChange, picks the unit; without one the largest unit that keeps the number at 1 or more is used. min and max are in base units. step is in the current unit, Shift with the arrows, or PageUp and PageDown, steps by ten, Home and End jump to min and max, and Enter or blur applies typed text. Unknown units revert the text. name submits the base value through a hidden input.",
+    example: `import { BYTE_UNITS } from "@/lib/unit-input-utils"
+import { UnitInput } from "@/components/ui/unit-input"
+
+export function MemoryLimitField({
+  value,
+  onChange,
+}: {
+  value: number | null
+  onChange: (bytes: number | null) => void
+}) {
+  return (
+    <UnitInput
+      aria-label="Memory limit"
+      value={value}
+      onValueChange={onChange}
+      units={BYTE_UNITS}
+      defaultUnit="MB"
+      min={128_000_000}
+      max={10_000_000_000}
+    />
+  )
 }`,
   },
   "uptime-bar": {

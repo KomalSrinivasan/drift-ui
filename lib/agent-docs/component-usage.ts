@@ -10,7 +10,7 @@ const SAME_AS_SHADCN =
 export const COMPONENT_USAGE: Record<string, ComponentUsage> = {
   "activity-heatmap": {
     notes:
-      "ActivityHeatmap displays activity and contributions over a year on a grid of weeks by weekdays. Intensity levels 0 to 4 are mapped from counts using theme tokens (bg-muted/40 through bg-primary). Follows the WAI-ARIA grid pattern with a single tab stop and 2D arrow key navigation across cells. Includes accessible labels, customizable week start day, optional summary header, and a legend.",
+      "ActivityHeatmap displays activity and contributions over a year on a grid of weeks by weekdays. Intensity levels 0 to 4 are mapped from counts using theme tokens (bg-muted/40 through bg-primary). Follows the WAI-ARIA grid pattern with a single tab stop and 2D arrow key navigation across cells. Includes accessible labels, customizable week start day, optional summary header, floating tooltips on hover and focus (with custom renderTooltip support), and a legend.",
     example: `import { ActivityHeatmap } from "@/components/ui/activity-heatmap"
 
 const DATA = [
@@ -137,6 +137,29 @@ export function ReviewThread() {
         if (!response.ok) throw new Error("Could not save the comment")
       }}
     />
+  )
+}`,
+  },
+  "cron-input": {
+    notes:
+      "A standard five-field cron expression input (minute, hour, day-of-month, month, day-of-week) for scheduling jobs. Validates standard cron grammar with wildcards (*), comma lists, ranges (-), and steps (/), explicitly excluding non-standard extensions. When both day-of-month and day-of-week are set, cron matches either one (POSIX standard). Displays a plain-English schedule readout (e.g., 'At 09:00, Monday through Friday') and lists the next 5 upcoming run times deterministically. Invalid input sets aria-invalid and shows an accessible role='alert' error; field-specific validation errors also name the offending field. Pure logic helpers are exported from @/lib/cron-input.",
+    example: `"use client"
+
+import { useState } from "react"
+import { CronInput } from "@/components/ui/cron-input"
+
+export function BackupSchedule() {
+  const [schedule, setSchedule] = useState("0 9 * * 1-5")
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor="cron" className="text-sm font-medium">Backup schedule</label>
+      <CronInput
+        value={schedule}
+        onValueChange={setSchedule}
+        inputProps={{ id: "cron" }}
+      />
+    </div>
   )
 }`,
   },
@@ -356,6 +379,35 @@ export function IssueFilters({ issues }: { issues: { status: string; title: stri
       <FilterBuilder fields={fields} value={filters} onValueChange={setFilters} />
       <p className="text-sm text-muted-foreground">{visible.length} issues</p>
     </div>
+  )
+}`,
+  },
+  "histogram-range": {
+    notes:
+      "A dual-thumb range slider sitting below a distribution histogram bar chart, designed for filtering datasets where distribution matters such as price, file size, or duration. Values inside the active range default to bg-primary (customizable via barColor, e.g., bg-chart-1) while values outside default to bg-muted-foreground/20 (customizable via mutedBarColor). Bucketing logic in @/lib/histogram-range ensures values equal to max land strictly in the last bucket. Accessible thumb labeling (minThumbLabel, maxThumbLabel), aria-valuetext generated via formatValue, and decorative bars (aria-hidden) with screen-reader result announcements via an aria-live region. Supports controlled and uncontrolled states via use-controllable-state.",
+    example: `"use client"
+
+import { useState } from "react"
+import { HistogramRange } from "@/components/ui/histogram-range"
+
+const prices = [25, 45, 60, 75, 80, 110, 120, 150, 180, 220, 260, 310, 450]
+
+export function PriceFilter() {
+  const [range, setRange] = useState<[number, number]>([50, 200])
+
+  return (
+    <HistogramRange
+      data={prices}
+      min={0}
+      max={500}
+      value={range}
+      onValueChange={setRange}
+      formatValue={(n) => \`$\${n}\`}
+      minThumbLabel="Minimum price"
+      maxThumbLabel="Maximum price"
+      showValues
+      showCount
+    />
   )
 }`,
   },
@@ -741,6 +793,24 @@ export function ExportPopover() {
   )
 }`,
   },
+  "query-input": {
+    notes:
+      'Single-line search that reads key:value terms into Filter objects, the same type filter-builder uses. fields: FilterField[] ({ id, label, type: text | select | number | date, options? }); keys match field ids case-insensitively. Syntax: key:value is is, -key:value is is-not, key:a,b on a text or select field is is-any-of (is-none-of with -; a trailing comma, as in key:a, keeps a one-item list), key:*text* on a text field is contains, key:>7 and key:<7 compare numbers (gt, lt; key:7 is eq; >= and <= are not supported), dates take >, < and from..to (a bare date is a one-day between). Quote values with spaces: label:"needs review". A term with an unknown key, or a negated number or date, stays in the free text; a trailing key: gives a filter with an empty value, which matchesFilter treats as matching everything. onFiltersChange(filters, text) fires on every edit; value/defaultValue/onValueChange hold the raw string. Typing at the end of a term suggests keys, then select options, in a combobox: ArrowUp and ArrowDown move (ArrowDown on an empty term opens the key list, up to eight keys), Enter or Tab inserts the highlighted suggestion, Escape closes. Key suggestions start with nothing highlighted, so Enter on a plain word like auth still reaches the form; value suggestions start on the first option. Matched terms are highlighted behind the input. The lib exports parseQuery(query, fields) and formatQuery(filters, text) to convert both ways. className goes on the bordered wrapper and other props on the input.',
+    example: `"use client"
+
+import type { FilterField } from "@/lib/filter"
+import { QueryInput } from "@/components/ui/query-input"
+
+const fields: FilterField[] = [
+  { id: "is", label: "State", type: "select", options: [{ value: "open", label: "Open" }, { value: "closed", label: "Closed" }] },
+  { id: "author", label: "Author", type: "text" },
+  { id: "age", label: "Age in days", type: "number" },
+]
+
+export function IssueSearch({ onSearch }: { onSearch: (filters: unknown[], text: string) => void }) {
+  return <QueryInput aria-label="Search issues" fields={fields} defaultValue="is:open author:me" onFiltersChange={onSearch} />
+}`,
+  },
   rating: {
     notes:
       'Radio group of icons for a score. Controlled with value/onValueChange or uncontrolled with defaultValue (0 means no rating). max sets the icon count (default 5), step={0.5} allows half scores, icon swaps the default lucide Star for any SVG icon. Arrow keys change the score, Home and End jump to the ends. readOnly renders a role=img labelled like "3.5 out of 5". The fill color is the root\'s text color (text-primary), so className="text-chart-4" recolors it. Pass aria-label.',
@@ -977,6 +1047,20 @@ export function EnvironmentsField() {
   )
 }`,
   },
+  "template-input": {
+    notes:
+      "Textarea for text with {{placeholders}}, such as email subjects, notification templates and webhook payloads. Typing {{ opens a list of variables filtered on value and label; ArrowUp and ArrowDown move, Enter or Tab inserts {{value}}, Escape closes. {{ works after any character, as in id-{{name. variables: { value, label, description? }[] (the MentionOption type). The value stays a plain string with value/defaultValue/onValueChange. Variables are highlighted in a layer drawn behind the textarea, so native undo, selection and caret behaviour are untouched. A {{name}} that is not in variables gets a wavy underline and is named in the textarea's accessible description; findUnknownVariables(text, variables) from the lib returns those names for form validation. className goes on the bordered wrapper and other props go on the textarea, so aria-label, placeholder, rows and aria-invalid work.",
+    example: `import { TemplateInput } from "@/components/ui/template-input"
+
+const variables = [
+  { value: "first_name", label: "First name" },
+  { value: "order_id", label: "Order number" },
+]
+
+export function SubjectField() {
+  return <TemplateInput aria-label="Subject" variables={variables} defaultValue="Hi {{first_name}}, order {{order_id}} shipped" />
+}`,
+  },
   theme: {
     notes:
       "Neutral oklch tokens for light and dark mode, written into the project's global CSS. Optional: components read whatever tokens the project already has.",
@@ -1027,6 +1111,47 @@ export function TimezoneSetting() {
   const [timeZone, setTimeZone] = useState("Europe/London")
 
   return <TimezonePicker aria-label="Time zone" value={timeZone} onValueChange={setTimeZone} />
+}`,
+  },
+  toast: {
+    notes:
+      'Radix: registry/default/ui/sonner.tsx installs as components/ui/sonner.tsx and wraps sonner, so every shadcn Sonner call and Toaster prop works. Base UI installs components/ui/toast.tsx with shadcn\'s toast API (toast.add({ title, type })). Render Toaster once near the root. Import toast from the component file instead of from sonner to get the additions. toast.undo delays a destructive action until the toast goes away (onCommit) unless Undo or its shortcut ("Mod+Z") runs onUndo, and it commits on pagehide, so send the request in onCommit with fetch keepalive: true or navigator.sendBeacon so it survives the tab closing. toast.progress shows a determinate bar; update it by id and finish with a success toast on the same id. Toasts that reuse an id (Radix) or key (Base UI) merge into one with a ×N badge and a restarted timer. Durations grow with text length. Error toasts are announced assertively. persist: true sends the toast to onToastPersist listeners when it closes, ready for NotificationInbox.',
+    example: `"use client"
+
+import { Button } from "@/components/ui/button"
+import { toast } from "@/components/ui/sonner"
+
+export function DeleteFiles({ ids, setHidden }: { ids: string[]; setHidden: (hidden: boolean) => void }) {
+  function remove() {
+    setHidden(true)
+    toast.undo(\`Deleted \${ids.length} files\`, {
+      shortcut: "Mod+Z",
+      onCommit: () =>
+        fetch("/api/files/delete", { method: "POST", body: JSON.stringify(ids), keepalive: true }),
+      onUndo: () => setHidden(false),
+    })
+  }
+
+  return <Button variant="destructive" onClick={remove}>Delete</Button>
+}`,
+    baseExample: `"use client"
+
+import { Button } from "@/components/ui/button"
+import { toast } from "@/components/ui/toast"
+
+export function DeleteFiles({ ids, setHidden }: { ids: string[]; setHidden: (hidden: boolean) => void }) {
+  function remove() {
+    setHidden(true)
+    toast.undo({
+      title: \`Deleted \${ids.length} files\`,
+      shortcut: "Mod+Z",
+      onCommit: () =>
+        fetch("/api/files/delete", { method: "POST", body: JSON.stringify(ids), keepalive: true }),
+      onUndo: () => setHidden(false),
+    })
+  }
+
+  return <Button variant="destructive" onClick={remove}>Delete</Button>
 }`,
   },
   tour: {

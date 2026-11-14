@@ -11,6 +11,7 @@ export const COMPONENT_KEYBOARD: Record<string, KeyBinding[]> = {
     { keys: ARROWS, action: "Move through the calendar grid" },
     { keys: HOME_END, action: "First or last week in the row" },
     { keys: ["Enter", "Space"], action: "Select the focused day" },
+    { keys: ["Escape"], action: "Dismiss the hover or focus tooltip" },
   ],
   "bulk-action-bar": [
     { keys: LEFT_RIGHT, action: "Move between actions" },
@@ -42,6 +43,12 @@ export const COMPONENT_KEYBOARD: Record<string, KeyBinding[]> = {
     { keys: HOME_END, action: "First or last emoji in the row" },
     { keys: PAGE, action: "Previous or next category" },
     { keys: ["Enter", "Space"], action: "Pick the focused emoji" },
+  ],
+  "histogram-range": [
+    { keys: LEFT_RIGHT, action: "Adjust the focused thumb by step" },
+    { keys: UP_DOWN, action: "Adjust the focused thumb by step" },
+    { keys: PAGE, action: "Adjust the focused thumb by larger step" },
+    { keys: HOME_END, action: "Set the focused thumb to min or max" },
   ],
   "image-cropper": [
     { keys: ARROWS, action: "Pan, hold Shift for larger steps" },
@@ -141,6 +148,16 @@ export const COMPONENT_KEYBOARD: Record<string, KeyBinding[]> = {
   "timezone-picker": [
     { keys: UP_DOWN, action: "Move through zones" },
     { keys: ["Enter"], action: "Pick the zone" },
+  ],
+  toast: [
+    { keys: ["Alt+T"], action: "Focus the toasts (Radix)" },
+    { keys: ["F6"], action: "Focus the toasts (Base UI)" },
+    { keys: ["Mod+Z"], action: "Undo the newest undo toast that sets it" },
+    { keys: ["Tab"], action: "Move to Undo and other actions" },
+    {
+      keys: ["Escape"],
+      action: "Collapse the stack (Radix) or close the toast (Base UI)",
+    },
   ],
   tour: [
     { keys: LEFT_RIGHT, action: "Previous or next step" },

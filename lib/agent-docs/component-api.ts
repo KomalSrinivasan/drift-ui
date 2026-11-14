@@ -129,6 +129,19 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
             "Custom CSS class overrides for intensity levels 0 through 4.",
         },
         {
+          name: "showTooltip",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether to render a floating tooltip on hover and focus.",
+        },
+        {
+          name: "renderTooltip",
+          type: "(day: ActivityDay) => ReactNode",
+          description:
+            "Custom tooltip content render function receiving the active day.",
+        },
+        {
           name: "aria-label",
           type: "string",
           default: '"Activity heatmap"',
@@ -545,6 +558,107 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
             "Each emoji and who reacted. Names come from the thread's authors and currentUser.",
         },
       ],
+    },
+  ],
+  "cron-input": [
+    {
+      name: "CronInput",
+      description:
+        "A standard five-field cron expression input with plain-English schedule readout and upcoming run times.",
+      props: [
+        {
+          name: "value",
+          type: "string",
+          description: "Controlled cron expression value.",
+        },
+        {
+          name: "defaultValue",
+          type: "string",
+          default: '"* * * * *"',
+          description: "Initial value in uncontrolled mode.",
+        },
+        {
+          name: "onValueChange",
+          type: "(value: string) => void",
+          description: "Fires whenever the cron expression text changes.",
+        },
+        {
+          name: "placeholder",
+          type: "string",
+          default: '"* * * * *"',
+          description: "Placeholder text for the cron input field.",
+        },
+        {
+          name: "showDescription",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether to display the plain-English schedule readout below the input.",
+        },
+        {
+          name: "showNextRuns",
+          type: "boolean",
+          default: "true",
+          description:
+            "Whether to show the list of upcoming calculated run times.",
+        },
+        {
+          name: "nextRunsCount",
+          type: "number",
+          default: "5",
+          description: "Number of upcoming run times to calculate and display.",
+        },
+        {
+          name: "nextRunsFrom",
+          type: "Date",
+          description:
+            "Reference date for upcoming runs calculation. Defaults to current time.",
+        },
+        {
+          name: "formatNextRun",
+          type: "(date: Date) => string",
+          description: "Custom date formatting function for upcoming runs.",
+        },
+        {
+          name: "disabled",
+          type: "boolean",
+          default: "false",
+          description: "Whether the input is disabled.",
+        },
+        {
+          name: "readOnly",
+          type: "boolean",
+          default: "false",
+          description: "Whether the input is read-only.",
+        },
+        {
+          name: "inputProps",
+          type: 'Omit<React.ComponentProps<"input">, "value" | "defaultValue" | "onChange" | "disabled" | "readOnly">',
+          description:
+            "Additional props passed directly to the inner input element.",
+        },
+      ],
+      rest: "<div>",
+    },
+    {
+      name: "parseCron",
+      signature:
+        "parseCron(expression: string | undefined | null): ParseCronResult",
+      description:
+        "Pure logic helper in @/lib/cron-input that parses, validates, and expands a standard 5-field cron expression.",
+    },
+    {
+      name: "describeCron",
+      signature: "describeCron(expression: string | undefined | null): string",
+      description:
+        "Pure logic helper in @/lib/cron-input that turns a 5-field cron expression into a plain-English sentence.",
+    },
+    {
+      name: "getNextRunTimes",
+      signature:
+        "getNextRunTimes(expression: string | undefined | null, count?: number, from?: Date): Date[]",
+      description:
+        "Pure logic helper in @/lib/cron-input that computes the next N run times starting from a reference date, following POSIX matching rules.",
     },
   ],
   "csv-importer": [
@@ -1060,6 +1174,132 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
         "parseFilters(query: string, options?: { asGroup?: boolean }): Filter[] | FilterGroup",
       description:
         "Parses a DSL string, URL search parameters, or JSON into Filter[] or FilterGroup.",
+    },
+  ],
+  "histogram-range": [
+    {
+      name: "HistogramRange",
+      description:
+        "A dual-thumb range slider sitting below a distribution histogram bar chart. Highlights values in the selected range and mutes values outside.",
+      props: [
+        {
+          name: "data",
+          type: "number[]",
+          description:
+            "Raw numeric dataset to distribute across histogram bins.",
+        },
+        {
+          name: "min",
+          type: "number",
+          description:
+            "Lower bound of the range. Defaults to min value in data, or 0.",
+        },
+        {
+          name: "max",
+          type: "number",
+          description:
+            "Upper bound of the range. Defaults to max value in data, or 100.",
+        },
+        {
+          name: "step",
+          type: "number",
+          default: "1",
+          description: "Step increment of the slider thumbs.",
+        },
+        {
+          name: "minStepsBetweenThumbs",
+          type: "number",
+          default: "0",
+          description:
+            "Minimum number of steps required between the two thumbs.",
+        },
+        STATE_PROPS.value("[number, number]", "selected range"),
+        STATE_PROPS.defaultValue("[number, number]", "[min, max]"),
+        STATE_PROPS.onValueChange(
+          "(value: [number, number]) => void",
+          "when the range changes during dragging or keyboard input"
+        ),
+        {
+          name: "onValueCommit",
+          type: "(value: [number, number]) => void",
+          description:
+            "Called when pointer drag or keyboard interaction finishes.",
+        },
+        {
+          name: "bins",
+          type: "number",
+          default: "24",
+          description: "Number of discrete histogram buckets.",
+        },
+        {
+          name: "formatValue",
+          type: "(value: number) => string",
+          description: "Formats values for display and thumb aria-valuetext.",
+        },
+        {
+          name: "minThumbLabel",
+          type: "string",
+          default: '"Minimum"',
+          description: "Accessible aria-label for the lower thumb.",
+        },
+        {
+          name: "maxThumbLabel",
+          type: "string",
+          default: '"Maximum"',
+          description: "Accessible aria-label for the upper thumb.",
+        },
+        {
+          name: "showValues",
+          type: "boolean",
+          default: "false",
+          description:
+            "Whether to render current range values above the chart.",
+        },
+        {
+          name: "showCount",
+          type: "boolean",
+          default: "false",
+          description: "Whether to render active item count above the chart.",
+        },
+        {
+          name: "renderCount",
+          type: "(selectedCount: number, totalCount: number) => React.ReactNode",
+          description:
+            "Custom renderer for result count summary and live region.",
+        },
+        {
+          name: "barHeight",
+          type: "number | string",
+          default: "64",
+          description: "Height of the histogram chart area.",
+        },
+        {
+          name: "barColor",
+          type: "string",
+          description:
+            "Tailwind class for active bars inside the range (defaults to bg-primary).",
+        },
+        {
+          name: "mutedBarColor",
+          type: "string",
+          description:
+            "Tailwind class for inactive bars outside the range (defaults to bg-muted-foreground/20).",
+        },
+        {
+          name: "disabled",
+          type: "boolean",
+          default: "false",
+          description: "Whether the slider thumbs are disabled.",
+        },
+      ],
+      rest: "<div>",
+    },
+    {
+      name: "buildHistogramBuckets",
+      signature:
+        "buildHistogramBuckets(options: BuildHistogramBucketsOptions): BuildHistogramBucketsResult",
+      description:
+        "Pure logic helper in @/lib/histogram-range that buckets numeric data, normalizes bar heights, and calculates inRange statuses.",
     },
   ],
   "image-cropper": [
@@ -2356,6 +2596,54 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
         "Radix only. Positions the panel against another element. In Base UI, pass anchor to PopoverContent.",
     },
   ],
+  "query-input": [
+    {
+      name: "QueryInput",
+      description:
+        "A combobox input that parses key:value terms into filters. Typing at the end of a term suggests keys, then values. Arrow keys move through the list, ArrowDown on an empty term opens it, Enter or Tab inserts the highlighted suggestion, and Escape closes. Key suggestions start with nothing highlighted, so Enter on a plain word still submits; value suggestions start on the first option.",
+      props: [
+        {
+          name: "fields",
+          type: "FilterField[]",
+          required: true,
+          description:
+            "The keys that can be filtered on. Field ids are the keys, and select options are suggested as values.",
+        },
+        STATE_PROPS.value("string", "query"),
+        STATE_PROPS.defaultValue("string", '""'),
+        STATE_PROPS.onValueChange(
+          "(value: string) => void",
+          "when the query text changes"
+        ),
+        {
+          name: "onFiltersChange",
+          type: "(filters: Filter[], text: string) => void",
+          description:
+            "Called on every edit with the parsed filters and the leftover free text.",
+        },
+        {
+          name: "className",
+          type: "string",
+          description:
+            "Applied to the bordered wrapper, which also sets the font for the text and its highlights.",
+        },
+      ],
+      rest: "<input>",
+    },
+    {
+      name: "parseQuery",
+      signature:
+        "parseQuery(query: string, fields: FilterField[]): { filters: Filter[]; text: string }",
+      description:
+        "Reads a query into filters and free text. Exported from the lib file.",
+    },
+    {
+      name: "formatQuery",
+      signature: "formatQuery(filters: Filter[], text?: string): string",
+      description:
+        "Writes filters and free text back as a query. parseQuery reads it back to the same filters, as long as the free text has no key:value terms for known fields.",
+    },
+  ],
   rating: [
     {
       name: "Rating",
@@ -3003,6 +3291,42 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
       rest: "<input>",
     },
   ],
+  "template-input": [
+    {
+      name: "TemplateInput",
+      description:
+        "A textarea that suggests variables after {{. Arrow keys move through the list, Enter or Tab inserts {{value}}, and Escape closes it. Known variables are highlighted and unknown ones get a wavy underline.",
+      props: [
+        STATE_PROPS.value("string", "template"),
+        STATE_PROPS.defaultValue("string", '""'),
+        STATE_PROPS.onValueChange(
+          "(value: string) => void",
+          "when the template changes"
+        ),
+        {
+          name: "variables",
+          type: "MentionOption[]",
+          required: true,
+          description:
+            "The variables that can be inserted, each { value, label, description? }. Typing after {{ filters on value and label.",
+        },
+        {
+          name: "className",
+          type: "string",
+          description:
+            "Applied to the bordered wrapper, which also sets the font for the text and its highlights.",
+        },
+      ],
+      rest: "<textarea>",
+    },
+    {
+      name: "findUnknownVariables",
+      signature:
+        "findUnknownVariables(text: string, variables: MentionOption[]): string[]",
+      description:
+        "Names used as {{name}} in the text that are not in variables, without duplicates. Exported from the lib file.",
+    },
+  ],
   "time-field": [
     {
       name: "TimeField",
@@ -3089,6 +3413,123 @@ export const COMPONENT_API: Record<string, ApiPart[]> = {
         },
       ],
       rest: "<button>",
+    },
+  ],
+  toast: [
+    {
+      name: "Toaster",
+      description:
+        "Render once near the root of the app. On Radix it takes every prop of shadcn's Sonner Toaster, and on Base UI every prop of shadcn's toast Toaster. The default duration it sets is the shortest a toast stays up.",
+      props: [
+        {
+          name: "duration",
+          type: "number",
+          default: "4000",
+          description:
+            "Radix. Default time on screen in ms. Toasts with long text stay longer.",
+        },
+        {
+          name: "timeout",
+          type: "number",
+          default: "5000",
+          description:
+            "Base UI. Default time on screen in ms. Toasts with long text stay longer.",
+        },
+      ],
+      rest: "Sonner Toaster (Radix) or Toast.Provider (Base UI)",
+    },
+    {
+      name: "toast",
+      signature:
+        "toast(message, options?) and toast.success, info, warning, error, loading, promise, dismiss (Radix); toast.add(options), close, update, promise (Base UI)",
+      description:
+        "The same calls as shadcn. Import it from the toast file, not from sonner, to get merging, reading-time durations and toast.undo. Error toasts are announced assertively.",
+      props: [
+        {
+          name: "id",
+          type: "string | number",
+          description:
+            "Radix. A toast of the same type with an id that is already showing merges into it: the newest content wins, a count badge appears and the timer restarts. Reusing the id with another type, such as loading then success, updates the toast without a count.",
+        },
+        {
+          name: "key",
+          type: "string",
+          description: "Base UI. Same merging as id on Radix.",
+        },
+        {
+          name: "duration",
+          type: "number",
+          description:
+            "Radix. Time on screen in ms. When unset it grows with the length of the title and description.",
+        },
+        {
+          name: "timeout",
+          type: "number",
+          description:
+            "Base UI. Time on screen in ms, 0 to stay until closed. When unset it grows with the length of the title and description, unless the Toaster timeout is 0, which keeps every toast up until closed.",
+        },
+        {
+          name: "persist",
+          type: "boolean",
+          description:
+            "Hands the toast to onToastPersist listeners when it closes, ready for the notification inbox. Only text titles and descriptions are passed on, so a toast whose title is a React element is not persisted.",
+        },
+      ],
+    },
+    {
+      name: "toast.undo",
+      signature:
+        "toast.undo(message, options) on Radix, toast.undo(options) with a title on Base UI",
+      description:
+        "Shows a toast with an Undo button and a countdown ring that pauses while the toasts are hovered or focused. The action is delayed until the toast goes away.",
+      props: [
+        {
+          name: "onCommit",
+          type: "() => void",
+          required: true,
+          description:
+            "Runs once when the toast times out, is swiped away or closed, or the page unloads. Because it can run during pagehide, send its request with fetch(url, { keepalive: true }) or navigator.sendBeacon, which the browser finishes after the tab closes.",
+        },
+        {
+          name: "onUndo",
+          type: "() => void",
+          description: "Runs when Undo is clicked. onCommit then never runs.",
+        },
+        {
+          name: "undoLabel",
+          type: "ReactNode",
+          default: '"Undo"',
+          description: "Text of the Undo button.",
+        },
+        {
+          name: "shortcut",
+          type: "string",
+          description:
+            'Shortcut such as "Mod+Z" that triggers Undo on the newest undo toast while it is open. Shown as ⌘Z on a Mac and Ctrl+Z elsewhere, and ignored while focus is in a text field.',
+        },
+      ],
+    },
+    {
+      name: "toast.progress",
+      signature:
+        "toast.progress(message, options) on Radix, toast.progress(options) with a title on Base UI",
+      description:
+        "Shows a determinate progress bar that stays up until replaced. Call it again with the same id to move the bar, then show a success or error toast with that id.",
+      props: [
+        {
+          name: "value",
+          type: "number",
+          required: true,
+          description: "Progress from 0 to 100. Values outside are clamped.",
+        },
+      ],
+    },
+    {
+      name: "onToastPersist",
+      signature:
+        "onToastPersist(listener: (toast: PersistedToast) => void): () => void",
+      description:
+        "Subscribes to toasts shown with persist. Each one arrives as { id, title, body?, createdAt } when it closes, which fits NotificationInbox items. Returns an unsubscribe function.",
     },
   ],
   tour: [

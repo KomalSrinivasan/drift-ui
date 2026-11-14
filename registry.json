@@ -178,7 +178,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/default/lib/cron-input.ts",
+          "path": "registry/default/lib/cron-input-utils.ts",
           "type": "registry:lib"
         }
       ]
@@ -399,7 +399,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/default/lib/histogram-range.ts",
+          "path": "registry/default/lib/histogram-range-utils.ts",
           "type": "registry:lib"
         }
       ]
@@ -1153,7 +1153,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/default/lib/toast.ts",
+          "path": "registry/default/lib/toast-utils.ts",
           "type": "registry:lib"
         },
         {
